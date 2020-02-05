@@ -1,3 +1,5 @@
+//! IO operations to the debug console.
+
 use crate::sbi;
 use core::fmt::{self, Write};
 use spin::Mutex;
@@ -13,18 +15,21 @@ impl fmt::Write for Stdout {
     }
 }
 
-pub fn _print(args: fmt::Arguments) {
+/// Print format struct to the debug console.
+pub fn print_fmt(args: fmt::Arguments) {
     static STDOUT: Mutex<Stdout> = Mutex::new(Stdout);
     STDOUT.lock().write_fmt(args).unwrap();
 }
 
+/// Prints to the debug console.
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => ({
-        $crate::io::_print(format_args!($($arg)*));
+        $crate::io::print_fmt(format_args!($($arg)*));
     });
 }
 
+/// Prints to the debug console, with a newline.
 #[macro_export]
 macro_rules! println {
     () => ($crate::print!("\n"));

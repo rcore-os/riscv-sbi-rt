@@ -1,7 +1,9 @@
+//! A mininal runtime / startup for OpenSBI on RISC-V.
+
 #![no_std]
 #![feature(asm, global_asm)]
 #![feature(alloc_error_handler)]
-#![deny(warnings)]
+#![deny(warnings, missing_docs)]
 
 extern crate alloc;
 
