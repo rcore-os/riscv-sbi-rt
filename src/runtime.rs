@@ -4,9 +4,9 @@ use core::sync::atomic::*;
 use linked_list_allocator::LockedHeap;
 
 #[no_mangle]
-pub extern "C" fn init(cpu_id: usize) {
+pub extern "C" fn init(hartid: usize, dtb: usize) {
     static READY: AtomicBool = AtomicBool::new(false);
-    if cpu_id == 0 {
+    if hartid == 0 {
         unsafe {
             HEAP_ALLOCATOR
                 .lock()
@@ -19,13 +19,13 @@ pub extern "C" fn init(cpu_id: usize) {
         }
     }
     unsafe {
-        main();
+        main(hartid, dtb);
     }
     crate::sbi::shutdown();
 }
 
 extern "C" {
-    fn main();
+    fn main(hartid: usize, dtb: usize);
 }
 
 global_asm!(

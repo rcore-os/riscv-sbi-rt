@@ -7,6 +7,6 @@ extern crate log;
 extern crate opensbi_rt;
 
 #[no_mangle]
-extern "C" fn main() {
-    println!("Hello, OpenSBI!");
+extern "C" fn main(hartid: usize, dtb: usize) {
+    println!("Hello, OpenSBI! hartid={}, dtb={:#x}", hartid, dtb);
 }
