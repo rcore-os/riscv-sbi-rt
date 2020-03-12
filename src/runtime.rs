@@ -7,6 +7,7 @@ use linked_list_allocator::LockedHeap;
 pub extern "C" fn init(hartid: usize, dtb: usize) {
     static READY: AtomicBool = AtomicBool::new(false);
     if hartid == 0 {
+        crate::log::init();
         unsafe {
             HEAP_ALLOCATOR
                 .lock()
