@@ -78,7 +78,7 @@ fn oom(layout: Layout) -> ! {
 fn halt() -> ! {
     loop {
         unsafe {
-            asm!("wfi");
+            llvm_asm!("wfi");
         }
     }
 }
