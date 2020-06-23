@@ -22,7 +22,7 @@ pub extern "C" fn init(hartid: usize, dtb: usize) {
     unsafe {
         main(hartid, dtb);
     }
-    crate::sbi::shutdown();
+    crate::sbi::legacy::shutdown();
 }
 
 extern "C" {
