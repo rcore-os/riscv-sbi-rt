@@ -12,3 +12,5 @@ pub mod io;
 mod log;
 mod runtime;
 pub mod sbi;
+
+pub use opensbi_rt_macros::entry;
