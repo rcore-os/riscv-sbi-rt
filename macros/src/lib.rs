@@ -9,6 +9,26 @@ use syn::{
 };
 use rand::{Rng, SeedableRng};
 
+/// Attribute to declare the entry point of the supervisor program
+/// 
+/// The specified function will be called by the runtime's init function,
+/// after a heap allocator is created. See `init` function in `src/runtime.rs`
+/// for details.
+/// 
+/// Users should provide specified function with signature `fn main(usize, usize)`.
+/// For example, you may consider using `fn main(hartid: usize, dtb: usize)`.
+/// 
+/// # Examples
+/// 
+/// - Simple entry point
+/// 
+/// ```no_run
+/// #[opensbi_rt::entry]
+/// fn main(hartid: usize, dtb: usize) {
+///     println!("Hello, OpenSBI!");
+///     println!("hartid={}, dtb={:#x}", hartid, dtb);
+/// }
+/// ```
 // Ref: https://github.com/rust-embedded/riscv-rt/blob/master/macros/src/lib.rs
 #[proc_macro_attribute]
 pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
