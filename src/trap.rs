@@ -132,7 +132,7 @@ __restore:
 "
 );
 
-use riscv::register::{scause::Scause, stvec};
+use riscv::register::{scause::Scause, sstatus::Sstatus, stvec};
 
 #[doc(hidden)]
 pub fn init() {
@@ -148,7 +148,12 @@ pub fn init() {
 
 /// Saved trap frame
 pub struct TrapFrame {
-    // todo: x1, x3, ...
+    /// 32 common registers
+    pub x: [usize; 32],
+    /// Sstatus register
+    pub sstatus: Sstatus,
+    /// Sepc register
+    pub sepc: usize,
 }
 
 #[doc(hidden)]
@@ -167,13 +172,13 @@ pub fn DefaultInterruptHandler() {
 
 #[doc(hidden)]
 #[export_name = "_start_trap_rust"]
-pub unsafe fn start_trap_rust(trap_frame: *const TrapFrame, scause: Scause, stval: usize) {
+pub unsafe fn start_trap_rust(trap_frame: *mut TrapFrame, scause: Scause, stval: usize) {
     extern "Rust" {
-        fn ExceptionHandler(trap_frame: &TrapFrame, scause: Scause, stval: usize);
+        fn ExceptionHandler(trap_frame: &mut TrapFrame, scause: Scause, stval: usize);
     }
 
     if scause.is_exception() {
-        ExceptionHandler(&*trap_frame, scause, stval)
+        ExceptionHandler(&mut *trap_frame, scause, stval)
     } else {
         let code = scause.code();
         if code < __INTERRUPTS.len() {
