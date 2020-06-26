@@ -1,18 +1,20 @@
-//! [RISC-V Supervisor Binary Interface (SBI)](https://github.com/riscv/riscv-sbi-doc/blob/master/riscv-sbi.adoc)
+//! RISC-V Supervisor Binary Interface (SBI)
+//!
+//! Ref: https://github.com/riscv/riscv-sbi-doc/blob/master/riscv-sbi.adoc
 
 pub mod base;
 pub mod legacy;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-struct SBIReturn {
-    error: SBIError,
+struct SbiReturn {
+    error: SbiError,
     value: usize,
 }
 
-impl SBIReturn {
+impl SbiReturn {
     fn unwrap(self) -> usize {
-        assert_eq!(self.error, SBIError::Success);
+        assert_eq!(self.error, SbiError::Success);
         self.value
     }
 }
@@ -21,7 +23,7 @@ impl SBIReturn {
 #[repr(isize)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[allow(missing_docs)]
-pub enum SBIError {
+pub enum SbiError {
     Success = 0,
     Failed = -1,
     NotSupported = -2,
@@ -32,19 +34,19 @@ pub enum SBIError {
 }
 
 /// The type returned by SBI functions.
-pub type SBIResult<T = ()> = Result<T, SBIError>;
+pub type SbiResult<T = ()> = Result<T, SbiError>;
 
-impl From<SBIReturn> for SBIResult<usize> {
-    fn from(ret: SBIReturn) -> Self {
+impl From<SbiReturn> for SbiResult<usize> {
+    fn from(ret: SbiReturn) -> Self {
         match ret.error {
-            SBIError::Success => Ok(ret.value),
+            SbiError::Success => Ok(ret.value),
             err => Err(err),
         }
     }
 }
 
 #[inline(always)]
-fn sbi_call(ext_id: usize, func_id: usize, arg0: usize, arg1: usize, arg2: usize) -> SBIReturn {
+fn sbi_call(ext_id: usize, func_id: usize, arg0: usize, arg1: usize, arg2: usize) -> SbiReturn {
     let error;
     let value;
     unsafe {
@@ -56,5 +58,5 @@ fn sbi_call(ext_id: usize, func_id: usize, arg0: usize, arg1: usize, arg2: usize
             : "volatile"
         );
     }
-    SBIReturn { error, value }
+    SbiReturn { error, value }
 }

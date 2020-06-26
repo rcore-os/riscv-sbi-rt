@@ -4,7 +4,7 @@ use core::sync::atomic::*;
 use linked_list_allocator::LockedHeap;
 
 #[no_mangle]
-pub extern "C" fn init(hartid: usize, dtb: usize) {
+pub extern "C" fn init(hartid: usize, dtb: usize) -> ! {
     static READY: AtomicBool = AtomicBool::new(false);
     if hartid == 0 {
         crate::log::init();
@@ -22,7 +22,7 @@ pub extern "C" fn init(hartid: usize, dtb: usize) {
     unsafe {
         main(hartid, dtb);
     }
-    crate::sbi::legacy::shutdown();
+    crate::sbi::legacy::shutdown()
 }
 
 extern "C" {

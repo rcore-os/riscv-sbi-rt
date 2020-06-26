@@ -7,10 +7,12 @@
 
 extern crate alloc;
 
+pub mod sbi;
+
 #[macro_use]
+#[doc(hidden)]
 pub mod io;
 mod log;
 mod runtime;
-pub mod sbi;
 
 pub use opensbi_rt_macros::entry;

@@ -1,10 +1,12 @@
-//! [SBI Base Functionality](https://github.com/riscv/riscv-sbi-doc/blob/master/riscv-sbi.adoc#sbi-base-functionality-extension-id-0x10)
+//! SBI Base Functionality (Extension 0x10)
 //!
 //! The base of the SBI is designed to be as small as possible.
 //! As such, it only contains functionality for probing which SBI extensions
 //! are available and for querying the version of the SBI. All functions in
 //! the base must be supported by all SBI implementations, so there are no
 //! error returns defined.
+//!
+//! Ref: https://github.com/riscv/riscv-sbi-doc/blob/master/riscv-sbi.adoc#sbi-base-functionality-extension-id-0x10
 
 use super::*;
 
