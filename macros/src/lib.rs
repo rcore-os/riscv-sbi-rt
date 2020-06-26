@@ -111,6 +111,50 @@ pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
     .into()
 }
 
+/// Attribute to declare a supervisor-level interrupt trap handler
+///
+/// Handle RISC-V defined supervisor level interrupts.
+/// Supported interrupts includes:
+///
+/// - UserSoft
+/// - SupervisorSoft
+/// - UserTimer
+/// - SupervisorTimer
+/// - UserExternal
+/// - SupervisorExternal
+///
+/// If you want to handle other interrupts that's not implemented in the RISC-V standard,
+/// you should provide a `DefaultHandler`, instead of using this attribute. (todo)
+///
+/// # Usage
+///
+/// By using a `#[interrupt] fn Name(...`, you override the default handler for interrupt
+/// with the given `Name`. These handlers must have a signature like `[unsafe] fn() [-> !]`.
+/// Additionally, it's possible to state these handlers by declaring `static mut` variables
+/// at the beginning of the function body. These variables would be safe to access from the
+/// function body.
+///
+/// If this interrupt handler is not overriden by custom `#[interrupt]` functions, the runtime
+/// would trigger `DefaultHandler` instead.
+///
+/// # Example
+///
+/// - Handle a supervisor timer, print message every 100 * 100000 clocks.
+/// ```no_run
+/// static INTERVAL: u64 = 100000;
+///
+/// #[opensbi_rt::interrupt]
+/// fn SupervisorTimer() {
+///     static mut TICKS: usize = 0;
+///
+///     sbi::legacy::set_timer(time::read64().wrapping_add(INTERVAL));
+///
+///     *TICKS += 1;
+///     if *TICKS % 100 == 0 {
+///         println!("100 ticks~");
+///     }
+/// }
+/// ```
 // Ref: https://docs.rs/cortex-m-rt-macros/0.1.8/src/cortex_m_rt_macros/lib.rs.html
 #[proc_macro_attribute]
 pub fn interrupt(args: TokenStream, input: TokenStream) -> TokenStream {

@@ -196,13 +196,10 @@ pub unsafe fn start_trap_rust(trap_frame: *mut TrapFrame, scause: Scause, stval:
 pub enum Interrupt {
     UserSoft,
     SupervisorSoft,
-    MachineSoft,
     UserTimer,
     SupervisorTimer,
-    MachineTimer,
     UserExternal,
     SupervisorExternal,
-    MachineExternal,
 }
 
 pub use self::Interrupt as interrupt;
@@ -211,6 +208,7 @@ pub use self::Interrupt as interrupt;
 pub union Vector {
     handler: unsafe fn(),
     reserved: unsafe fn(),
+    invalid: unsafe fn(),
 }
 
 #[doc(hidden)]
@@ -224,7 +222,7 @@ pub static __INTERRUPTS: [Vector; 12] = [
         reserved: DefaultHandler,
     },
     Vector {
-        handler: MachineSoft,
+        invalid: DefaultHandler,
     },
     Vector { handler: UserTimer },
     Vector {
@@ -234,7 +232,7 @@ pub static __INTERRUPTS: [Vector; 12] = [
         reserved: DefaultHandler,
     },
     Vector {
-        handler: MachineTimer,
+        invalid: DefaultHandler,
     },
     Vector {
         handler: UserExternal,
@@ -246,20 +244,17 @@ pub static __INTERRUPTS: [Vector; 12] = [
         reserved: DefaultHandler,
     },
     Vector {
-        handler: MachineExternal,
+        invalid: DefaultHandler,
     },
 ];
 
 extern "Rust" {
     fn UserSoft();
     fn SupervisorSoft();
-    fn MachineSoft();
     fn UserTimer();
     fn SupervisorTimer();
-    fn MachineTimer();
     fn UserExternal();
     fn SupervisorExternal();
-    fn MachineExternal();
 
     fn DefaultHandler();
 }
