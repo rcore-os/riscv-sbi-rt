@@ -35,7 +35,7 @@ global_asm!(
 # 保存 Context 并且进入 rust 中的中断处理函数 interrupt::handler::handle_interrupt()
 _start_trap_sbi:
     # 在栈上开辟 Context 所需的空间
-    addi    sp, sp, -34*8
+    addi    sp, sp, -34*8 # todo: REGBYTES here
     # 保存通用寄存器，除了 x0（固定为 0）
     SAVE    x1, 1
     addi    x1, sp, 34*8
@@ -135,7 +135,7 @@ __restore:
 use riscv::register::{scause::Scause, stvec};
 
 #[doc(hidden)]
-pub fn setup_interrupts() {
+pub fn init() {
     unsafe {
         extern "C" {
             /// `interrupt.asm` 中的中断入口
@@ -155,14 +155,14 @@ pub struct TrapFrame {
 #[no_mangle]
 #[allow(unused_variables, non_snake_case)]
 pub fn DefaultExceptionHandler(trap_frame: &TrapFrame, scause: Scause, stval: usize) -> ! {
-    crate::runtime::halt()
+    panic!("Default exception handler!");
 }
 
 #[doc(hidden)]
 #[no_mangle]
 #[allow(unused_variables, non_snake_case)]
 pub fn DefaultInterruptHandler() {
-    crate::runtime::halt()
+    panic!("Default interrupt handler!");
 }
 
 #[doc(hidden)]

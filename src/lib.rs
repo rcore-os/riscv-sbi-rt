@@ -13,8 +13,8 @@ pub mod sbi;
 #[doc(hidden)]
 pub mod io;
 
-pub mod interrupt;
 mod log;
 mod runtime;
+pub mod trap;
 
 pub use opensbi_rt_macros::entry;

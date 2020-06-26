@@ -20,7 +20,7 @@ pub extern "C" fn init(hartid: usize, dtb: usize) -> ! {
             spin_loop_hint();
         }
     }
-    crate::interrupt::setup_interrupts();
+    crate::trap::init();
     unsafe {
         main(hartid, dtb);
     }
@@ -78,7 +78,7 @@ fn oom(layout: Layout) -> ! {
     panic!("out of memory: {:#x?}", layout);
 }
 
-pub fn halt() -> ! {
+fn halt() -> ! {
     loop {
         unsafe {
             llvm_asm!("wfi");

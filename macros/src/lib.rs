@@ -135,9 +135,9 @@ fn random_ident() -> Ident {
         &(0..16)
             .map(|i| {
                 if i == 0 || rng.gen() {
-                    ('a' as u8 + rng.gen::<u8>() % 25) as char
+                    (b'a' + rng.gen::<u8>() % 25) as char
                 } else {
-                    ('0' as u8 + rng.gen::<u8>() % 10) as char
+                    (b'0' + rng.gen::<u8>() % 10) as char
                 }
             })
             .collect::<String>(),
