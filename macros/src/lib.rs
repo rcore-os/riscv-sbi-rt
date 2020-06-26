@@ -1,27 +1,26 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{
-    parse_macro_input, parse, spanned::Spanned, 
-    FnArg, Ident, ItemFn, ReturnType, Type, Visibility,
-};
 use rand::{Rng, SeedableRng};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
+use syn::{
+    parse, parse_macro_input, spanned::Spanned, FnArg, Ident, ItemFn, ReturnType, Type, Visibility,
+};
 
 /// Attribute to declare the entry point of the supervisor program
-/// 
+///
 /// The specified function will be called by the runtime's init function,
 /// after a heap allocator is created. See `init` function in `src/runtime.rs`
 /// for details.
-/// 
+///
 /// Users should provide specified function with signature `fn main(usize, usize)`.
 /// For example, you may consider using `fn main(hartid: usize, dtb: usize)`.
-/// 
+///
 /// # Examples
-/// 
+///
 /// - Simple entry point
-/// 
+///
 /// ```no_run
 /// #[opensbi_rt::entry]
 /// fn main(hartid: usize, dtb: usize) {
@@ -40,9 +39,10 @@ pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
         let mut param_1_is_usize = false;
         if let FnArg::Typed(pat_type) = &f.sig.inputs[0] {
             if let Type::Path(type_path) = pat_type.ty.as_ref() {
-                if type_path.path.segments.len() == 1 
-                && type_path.path.segments[0].ident == "usize"
-                && type_path.path.segments[0].arguments.is_empty() {
+                if type_path.path.segments.len() == 1
+                    && type_path.path.segments[0].ident == "usize"
+                    && type_path.path.segments[0].arguments.is_empty()
+                {
                     param_1_is_usize = true;
                 }
             }
@@ -50,9 +50,10 @@ pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
         let mut param_2_is_usize = false;
         if let FnArg::Typed(pat_type) = &f.sig.inputs[1] {
             if let Type::Path(type_path) = pat_type.ty.as_ref() {
-                if type_path.path.segments.len() == 1 
-                && type_path.path.segments[0].ident == "usize"
-                && type_path.path.segments[0].arguments.is_empty() {
+                if type_path.path.segments.len() == 1
+                    && type_path.path.segments[0].ident == "usize"
+                    && type_path.path.segments[0].arguments.is_empty()
+                {
                     param_2_is_usize = true;
                 }
             }
@@ -61,7 +62,7 @@ pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
     } else {
         false
     };
-    
+
     let valid_signature = f.sig.constness.is_none()
         && f.vis == Visibility::Inherited
         && f.sig.abi.is_none()
