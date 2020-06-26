@@ -3,10 +3,11 @@ use core::panic::PanicInfo;
 use core::sync::atomic::*;
 use linked_list_allocator::LockedHeap;
 
-#[no_mangle]
+#[export_name = "_start_rust"]
 pub extern "C" fn init(hartid: usize, dtb: usize) -> ! {
     static READY: AtomicBool = AtomicBool::new(false);
     if hartid == 0 {
+        // todo: should be put into #[pre_init]
         crate::log::init();
         unsafe {
             HEAP_ALLOCATOR
@@ -19,13 +20,15 @@ pub extern "C" fn init(hartid: usize, dtb: usize) -> ! {
             spin_loop_hint();
         }
     }
+    crate::interrupt::setup_interrupts();
     unsafe {
         main(hartid, dtb);
     }
     crate::sbi::legacy::shutdown()
 }
 
-extern "C" {
+extern "Rust" {
+    // Provided by supervisor implementation
     fn main(hartid: usize, dtb: usize);
 }
 
@@ -40,7 +43,7 @@ _start:
     sll t0, a0, 14
     add sp, sp, t0
 
-    call init
+    call _start_rust
 
     .section .bss.stack
     .align 12
@@ -75,7 +78,7 @@ fn oom(layout: Layout) -> ! {
     panic!("out of memory: {:#x?}", layout);
 }
 
-fn halt() -> ! {
+pub fn halt() -> ! {
     loop {
         unsafe {
             llvm_asm!("wfi");

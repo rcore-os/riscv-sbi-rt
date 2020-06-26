@@ -12,6 +12,8 @@ pub mod sbi;
 #[macro_use]
 #[doc(hidden)]
 pub mod io;
+
+pub mod interrupt;
 mod log;
 mod runtime;
 

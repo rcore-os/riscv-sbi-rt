@@ -12,4 +12,3 @@ Dependencies:
 * QEMU v4.1.0
 
 Just open [example](./example) directory and `make run`!
-
