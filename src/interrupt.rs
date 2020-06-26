@@ -5,24 +5,29 @@
 // Ref: https://os20-rcore-tutorial.github.io/rCore-Tutorial-deploy/docs/lab-1/guide/part-6.html
 // todo: should we save all registers here or part of them only?
 #[cfg(target_pointer_width = "64")]
-global_asm!("
+global_asm!(
+    "
     .macro SAVE reg, offset
         sd  \\reg, \\offset*8(sp)
     .endm
     .macro LOAD reg, offset
         ld  \\reg, \\offset*8(sp)
     .endm
-");
+"
+);
 #[cfg(target_pointer_width = "32")]
-global_asm!("
+global_asm!(
+    "
     .macro SAVE reg, offset
         sw  \\reg, \\offset*4(sp)
     .endm
     .macro LOAD reg, offset
         lw  \\reg, \\offset*4(sp)
     .endm
-");
-global_asm!("
+"
+);
+global_asm!(
+    "
     .section .text
     .globl _start_trap_sbi
     .align 2  # 对齐到4字节
