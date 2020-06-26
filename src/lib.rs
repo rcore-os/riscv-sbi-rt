@@ -17,4 +17,4 @@ mod log;
 mod runtime;
 pub mod trap;
 
-pub use opensbi_rt_macros::entry;
+pub use opensbi_rt_macros::{entry, interrupt};

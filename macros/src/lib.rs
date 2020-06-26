@@ -2,10 +2,12 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use rand::{Rng, SeedableRng};
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 use syn::{
-    parse, parse_macro_input, spanned::Spanned, FnArg, Ident, ItemFn, ReturnType, Type, Visibility,
+    parse, spanned::Spanned, AttrStyle, Attribute, FnArg, Ident, Item, ItemFn, ItemStatic,
+    ReturnType, Stmt, Type, Visibility,
 };
 
 /// Attribute to declare the entry point of the supervisor program
@@ -31,7 +33,7 @@ use syn::{
 // Ref: https://github.com/rust-embedded/riscv-rt/blob/master/macros/src/lib.rs
 #[proc_macro_attribute]
 pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
-    let f = parse_macro_input!(input as ItemFn);
+    let f: ItemFn = syn::parse(input).expect("`#[entry]` must be applied to a function");
 
     // check the function signature
 
@@ -81,7 +83,7 @@ pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
     if !valid_signature {
         return parse::Error::new(
             f.span(),
-            "`#[opensbi_rt::entry]` function must have signature `fn main(hartid: usize, dtb: usize)`",
+            "`#[entry]` function must have signature `fn main(hartid: usize, dtb: usize)`",
         )
         .to_compile_error()
         .into();
@@ -105,6 +107,107 @@ pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
         pub #unsafety fn #generated_name(#inputs) {
             #(#stmts)*
         }
+    )
+    .into()
+}
+
+// Ref: https://docs.rs/cortex-m-rt-macros/0.1.8/src/cortex_m_rt_macros/lib.rs.html
+#[proc_macro_attribute]
+pub fn interrupt(args: TokenStream, input: TokenStream) -> TokenStream {
+    let mut f: ItemFn = syn::parse(input).expect("`#[interrupt]` must be applied to a function");
+
+    if !args.is_empty() {
+        return parse::Error::new(Span::call_site(), "This attribute accepts no arguments")
+            .to_compile_error()
+            .into();
+    }
+
+    let fspan = f.span();
+    let ident = f.sig.ident.clone();
+    let ident_s = ident.to_string();
+
+    let valid_signature = f.sig.constness.is_none()
+        && f.vis == Visibility::Inherited
+        && f.sig.abi.is_none()
+        && f.sig.inputs.is_empty()
+        && f.sig.generics.params.is_empty()
+        && f.sig.generics.where_clause.is_none()
+        && f.sig.variadic.is_none()
+        && match f.sig.output {
+            ReturnType::Default => true,
+            ReturnType::Type(_, ref ty) => match **ty {
+                Type::Tuple(ref tuple) => tuple.elems.is_empty(),
+                Type::Never(..) => true,
+                _ => false,
+            },
+        };
+
+    if !valid_signature {
+        return parse::Error::new(
+            fspan,
+            "`#[interrupt]` handlers must have signature `[unsafe] fn() [-> !]`",
+        )
+        .to_compile_error()
+        .into();
+    }
+
+    let (statics, stmts) = match extract_static_muts(f.block.stmts.iter().cloned()) {
+        Err(e) => return e.to_compile_error().into(),
+        Ok(x) => x,
+    };
+
+    f.sig.ident = Ident::new(&format!("__sbi_rt_{}", f.sig.ident), Span::call_site());
+    f.sig.inputs.extend(statics.iter().map(|statik| {
+        let ident = &statik.ident;
+        let ty = &statik.ty;
+        let attrs = &statik.attrs;
+        syn::parse::<FnArg>(quote!(#[allow(non_snake_case)] #(#attrs)* #ident: &mut #ty).into())
+            .unwrap()
+    }));
+    f.block.stmts = core::iter::once(
+        syn::parse2(quote! {{
+            extern crate opensbi_rt;
+
+            // Check that this interrupt actually exists
+            // todo: when split into crate `sbi`, change this to avoid name conflict
+            opensbi_rt::trap::interrupt::#ident;
+        }})
+        .unwrap(),
+    )
+    .chain(stmts)
+    .collect();
+
+    let tramp_ident = Ident::new(&format!("{}_trampoline", f.sig.ident), Span::call_site());
+    let ident = &f.sig.ident;
+
+    let resource_args = statics
+        .iter()
+        .map(|statik| {
+            let (ref cfgs, ref attrs) = extract_cfgs(statik.attrs.clone());
+            let ident = &statik.ident;
+            let ty = &statik.ty;
+            let expr = &statik.expr;
+            quote! {
+                #(#cfgs)*
+                {
+                    #(#attrs)*
+                    static mut #ident: #ty = #expr;
+                    &mut #ident
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+
+    quote!(
+        #[doc(hidden)]
+        #[export_name = #ident_s]
+        pub unsafe extern "C" fn #tramp_ident() {
+            #ident(
+                #(#resource_args),*
+            )
+        }
+
+        #f
     )
     .into()
 }
@@ -143,4 +246,62 @@ fn random_ident() -> Ident {
             .collect::<String>(),
         Span::call_site(),
     )
+}
+
+/// Extracts `static mut` vars from the beginning of the given statements
+fn extract_static_muts(
+    stmts: impl IntoIterator<Item = Stmt>,
+) -> Result<(Vec<ItemStatic>, Vec<Stmt>), parse::Error> {
+    let mut istmts = stmts.into_iter();
+
+    let mut seen = HashSet::new();
+    let mut statics = vec![];
+    let mut stmts = vec![];
+    while let Some(stmt) = istmts.next() {
+        match stmt {
+            Stmt::Item(Item::Static(var)) => {
+                if var.mutability.is_some() {
+                    if seen.contains(&var.ident) {
+                        return Err(parse::Error::new(
+                            var.ident.span(),
+                            format!("the name `{}` is defined multiple times", var.ident),
+                        ));
+                    }
+
+                    seen.insert(var.ident.clone());
+                    statics.push(var);
+                } else {
+                    stmts.push(Stmt::Item(Item::Static(var)));
+                }
+            }
+            _ => {
+                stmts.push(stmt);
+                break;
+            }
+        }
+    }
+
+    stmts.extend(istmts);
+
+    Ok((statics, stmts))
+}
+
+fn extract_cfgs(attrs: Vec<Attribute>) -> (Vec<Attribute>, Vec<Attribute>) {
+    let mut cfgs = vec![];
+    let mut not_cfgs = vec![];
+
+    for attr in attrs {
+        if eq(&attr, "cfg") {
+            cfgs.push(attr);
+        } else {
+            not_cfgs.push(attr);
+        }
+    }
+
+    (cfgs, not_cfgs)
+}
+
+/// Returns `true` if `attr.path` matches `name`
+fn eq(attr: &Attribute, name: &str) -> bool {
+    attr.style == AttrStyle::Outer && attr.path.is_ident(name)
 }

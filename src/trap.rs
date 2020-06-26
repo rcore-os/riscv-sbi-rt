@@ -191,6 +191,22 @@ pub unsafe fn start_trap_rust(trap_frame: *mut TrapFrame, scause: Scause, stval:
     }
 }
 
+// Interrupts; doc hidden, for checking `#[interrupt]` name only
+#[doc(hidden)]
+pub enum Interrupt {
+    UserSoft,
+    SupervisorSoft,
+    MachineSoft,
+    UserTimer,
+    SupervisorTimer,
+    MachineTimer,
+    UserExternal,
+    SupervisorExternal,
+    MachineExternal,
+}
+
+pub use self::Interrupt as interrupt;
+
 #[doc(hidden)]
 pub union Vector {
     handler: unsafe fn(),
