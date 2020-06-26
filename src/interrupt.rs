@@ -4,29 +4,25 @@
 
 // Ref: https://os20-rcore-tutorial.github.io/rCore-Tutorial-deploy/docs/lab-1/guide/part-6.html
 // todo: should we save all registers here or part of them only?
-global_asm!(
-    "
-#if __riscv_xlen == 64
-# define STORE    sd
-# define LOAD     ld
-# define LOG_REGBYTES 3
-#else
-# define STORE    sw
-# define LOAD     lw
-# define LOG_REGBYTES 2
-#endif
-#define REGBYTES (1 << LOG_REGBYTES)
-
-# 宏：将寄存器存到栈上
-.macro SAVE reg, offset
-    STORE  \\reg, \\offset*REGBYTES(sp)
-.endm
-
-# 宏：将寄存器从栈中取出
-.macro RESTORE reg, offset
-    LOAD  \\reg, \\offset*REGBYTES(sp)
-.endm
-
+#[cfg(target_pointer_width = "64")]
+global_asm!("
+    .macro SAVE reg, offset
+        sd  \\reg, \\offset*8(sp)
+    .endm
+    .macro LOAD reg, offset
+        ld  \\reg, \\offset*8(sp)
+    .endm
+");
+#[cfg(target_pointer_width = "32")]
+global_asm!("
+    .macro SAVE reg, offset
+        sw  \\reg, \\offset*4(sp)
+    .endm
+    .macro LOAD reg, offset
+        lw  \\reg, \\offset*4(sp)
+    .endm
+");
+global_asm!("
     .section .text
     .globl _start_trap_sbi
     .align 2  # 对齐到4字节
@@ -87,46 +83,46 @@ _start_trap_sbi:
 # 从 Context 中恢复所有寄存器，并跳转至 Context 中 sepc 的位置
 __restore:
     # 恢复 CSR
-    RESTORE s1, 32
-    RESTORE s2, 33
+    LOAD    s1, 32
+    LOAD    s2, 33
     # 不恢复 scause 和 stval
     csrw    sstatus, s1
     csrw    sepc, s2
 
     # 恢复通用寄存器
-    RESTORE x1, 1
-    RESTORE x3, 3
-    RESTORE x4, 4
-    RESTORE x5, 5
-    RESTORE x6, 6
-    RESTORE x7, 7
-    RESTORE x8, 8
-    RESTORE x9, 9
-    RESTORE x10, 10
-    RESTORE x11, 11
-    RESTORE x12, 12
-    RESTORE x13, 13
-    RESTORE x14, 14
-    RESTORE x15, 15
-    RESTORE x16, 16
-    RESTORE x17, 17
-    RESTORE x18, 18
-    RESTORE x19, 19
-    RESTORE x20, 20
-    RESTORE x21, 21
-    RESTORE x22, 22
-    RESTORE x23, 23
-    RESTORE x24, 24
-    RESTORE x25, 25
-    RESTORE x26, 26
-    RESTORE x27, 27
-    RESTORE x28, 28
-    RESTORE x29, 29
-    RESTORE x30, 30
-    RESTORE x31, 31
+    LOAD    x1, 1
+    LOAD    x3, 3
+    LOAD    x4, 4
+    LOAD    x5, 5
+    LOAD    x6, 6
+    LOAD    x7, 7
+    LOAD    x8, 8
+    LOAD    x9, 9
+    LOAD    x10, 10
+    LOAD    x11, 11
+    LOAD    x12, 12
+    LOAD    x13, 13
+    LOAD    x14, 14
+    LOAD    x15, 15
+    LOAD    x16, 16
+    LOAD    x17, 17
+    LOAD    x18, 18
+    LOAD    x19, 19
+    LOAD    x20, 20
+    LOAD    x21, 21
+    LOAD    x22, 22
+    LOAD    x23, 23
+    LOAD    x24, 24
+    LOAD    x25, 25
+    LOAD    x26, 26
+    LOAD    x27, 27
+    LOAD    x28, 28
+    LOAD    x29, 29
+    LOAD    x30, 30
+    LOAD    x31, 31
 
-    # 恢复 sp（又名 x2）这里最后恢复是为了上面可以正常使用 RESTORE 宏
-    RESTORE x2, 2
+    # 恢复 sp（又名 x2）这里最后恢复是为了上面可以正常使用 LOAD 宏
+    LOAD    x2, 2
     sret
 "
 );
@@ -166,23 +162,21 @@ pub fn DefaultInterruptHandler() {
 
 #[doc(hidden)]
 #[export_name = "_start_trap_rust"]
-pub fn start_trap_rust(trap_frame: *const TrapFrame, scause: Scause, stval: usize) {
+pub unsafe fn start_trap_rust(trap_frame: *const TrapFrame, scause: Scause, stval: usize) {
     extern "Rust" {
         fn ExceptionHandler(trap_frame: &TrapFrame, scause: Scause, stval: usize);
     }
 
-    unsafe {
-        if scause.is_exception() {
-            ExceptionHandler(&*trap_frame, scause, stval)
+    if scause.is_exception() {
+        ExceptionHandler(&*trap_frame, scause, stval)
+    } else {
+        let code = scause.code();
+        if code < __INTERRUPTS.len() {
+            let h = &__INTERRUPTS[code];
+            // if reserved, it would call DefaultHandler
+            (h.handler)();
         } else {
-            let code = scause.code();
-            if code < __INTERRUPTS.len() {
-                let h = &__INTERRUPTS[code];
-                // if reserved, it would call DefaultHandler
-                (h.handler)();
-            } else {
-                DefaultHandler();
-            }
+            DefaultHandler();
         }
     }
 }
