@@ -1,5 +1,5 @@
 [package]
-name = "opensbi-rt-macros"
+name = "riscv-sbi-rt-macros"
 version = "0.1.0"
 authors = ["luojia65 <me@luojia.cc>"]
 edition = "2018"

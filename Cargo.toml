@@ -1,5 +1,5 @@
 [package]
-name = "opensbi-rt"
+name = "riscv-sbi-rt"
 version = "0.1.0"
 authors = ["Runji Wang <wangrunji0408@163.com>"]
 edition = "2018"
@@ -10,5 +10,5 @@ edition = "2018"
 log = "0.4"
 spin = "0.5.2"
 linked_list_allocator = "0.8.1"
-opensbi-rt-macros = { path = "macros", version = "0.1.0" }
+riscv-sbi-rt-macros = { path = "macros", version = "0.1.0" }
 riscv = "0.6"
