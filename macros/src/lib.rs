@@ -24,9 +24,9 @@ use syn::{
 /// - Simple entry point
 ///
 /// ```no_run
-/// #[opensbi_rt::entry]
+/// #[entry]
 /// fn main(hartid: usize, dtb: usize) {
-///     println!("Hello, OpenSBI!");
+///     println!("Hello, RISC-V SBI!");
 ///     println!("hartid={}, dtb={:#x}", hartid, dtb);
 /// }
 /// ```
@@ -143,7 +143,7 @@ pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
 /// ```no_run
 /// static INTERVAL: u64 = 100000;
 ///
-/// #[opensbi_rt::interrupt]
+/// #[interrupt]
 /// fn SupervisorTimer() {
 ///     static mut TICKS: usize = 0;
 ///
@@ -210,11 +210,11 @@ pub fn interrupt(args: TokenStream, input: TokenStream) -> TokenStream {
     }));
     f.block.stmts = core::iter::once(
         syn::parse2(quote! {{
-            extern crate opensbi_rt;
+            extern crate riscv_sbi_rt;
 
             // Check that this interrupt actually exists
-            // todo: when split into crate `sbi`, change this to avoid name conflict
-            opensbi_rt::trap::interrupt::#ident;
+            // Ref: https://docs.rs/cortex-m-rt-macros/0.1.8/src/cortex_m_rt_macros/lib.rs.html
+            riscv_sbi_rt::trap::interrupt::#ident;
         }})
         .unwrap(),
     )

@@ -7,8 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-log = "0.4"
-spin = "0.5.2"
 linked_list_allocator = "0.8.1"
-riscv-sbi-rt-macros = { path = "macros", version = "0.1.0" }
 riscv = "0.6"
+riscv-sbi = "0.1"
+riscv-sbi-rt-macros = { path = "macros", version = "0.1.0" }
