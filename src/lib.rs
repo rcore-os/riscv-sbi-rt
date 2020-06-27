@@ -12,11 +12,15 @@ pub use riscv_sbi_rt_macros::{entry, interrupt};
 use core::alloc::Layout;
 use core::panic::PanicInfo;
 use core::sync::atomic::*;
+use linked_list_allocator::LockedHeap;
 use riscv::register::{scause::Scause, sstatus::Sstatus, stvec};
 use riscv_sbi::println;
-use linked_list_allocator::LockedHeap;
 
 /// Rust entry point (_start_rust)
+///
+/// # Safety
+///
+/// This function should only be called by startup assembly code
 #[export_name = "_start_rust"]
 pub unsafe extern "C" fn start_rust(hartid: usize, dtb: usize) -> ! {
     #[rustfmt::skip]
@@ -266,9 +270,13 @@ pub fn DefaultInterruptHandler() {
 
 /// Trap entry point rust (_start_trap_rust)
 ///
-/// `scause` register is read to determine the cause of the trap. 
-/// Bit XLEN-1 indicates if it's an interrupt or an exception. 
+/// `scause` register is read to determine the cause of the trap.
+/// Bit XLEN-1 indicates if it's an interrupt or an exception.
 /// The result is examined and ExceptionHandler or one of the core interrupt handlers is called.
+///
+/// # Safety
+///
+/// This function should only be called by trap initializer assembly code.
 #[export_name = "_start_trap_rust"]
 pub unsafe fn start_trap_rust(trap_frame: *mut TrapFrame, scause: Scause, stval: usize) {
     extern "Rust" {
@@ -300,7 +308,7 @@ pub mod trap {
         UserExternal,
         SupervisorExternal,
     }
-    
+
     pub use self::Interrupt as interrupt;
 }
 
