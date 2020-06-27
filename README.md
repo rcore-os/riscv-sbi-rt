@@ -1,8 +1,9 @@
-# OpenSBI-rt
+# riscv-sbi-rt
 
-[![Actions Status](https://github.com/rcore-os/opensbi-rt/workflows/CI/badge.svg)](https://github.com/rcore-os/opensbi-rt/actions)
+[![Actions Status](https://github.com/rcore-os/riscv-sbi-rt/workflows/CI/badge.svg)](https://github.com/rcore-os/riscv-sbi-rt/actions)
 
-A mininal runtime / startup for OpenSBI on RISC-V.
+A mininal runtime / startup for Supervisor Binary Interface (SBI) on RISC-V.
+
 
 ## Example
 

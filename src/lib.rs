@@ -1,4 +1,4 @@
-//! A mininal runtime / startup for SBI (Supervisor Binary Interface) on RISC-V.
+//! A mininal runtime / startup for Supervisor Binary Interface (SBI) implementations on RISC-V.
 
 #![no_std]
 #![feature(llvm_asm, global_asm)]
