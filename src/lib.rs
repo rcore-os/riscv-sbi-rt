@@ -7,7 +7,7 @@
 
 extern crate alloc;
 
-pub use riscv_sbi_rt_macros::{entry, interrupt};
+pub use riscv_sbi_rt_macros::{entry, interrupt, pre_init};
 
 use core::alloc::Layout;
 use core::panic::PanicInfo;
@@ -15,6 +15,10 @@ use core::sync::atomic::*;
 use linked_list_allocator::LockedHeap;
 use riscv::register::{scause::Scause, sstatus::Sstatus, stvec};
 use riscv_sbi::println;
+
+#[export_name = "error: riscv-sbi-rt appears more than once in the dependency graph"]
+#[doc(hidden)]
+pub static __ONCE__: () = ();
 
 /// Rust entry point (_start_rust)
 ///
@@ -28,13 +32,19 @@ pub unsafe extern "C" fn start_rust(hartid: usize, dtb: usize) -> ! {
         // interrupt entry provided by assemble
         fn _start_trap_sbi();
 
+        // called once before bss and data is initialized
+        fn __pre_init();
+
         // Provided by supervisor implementation
         fn main(hartid: usize, dtb: usize);
     }
 
     static READY: AtomicBool = AtomicBool::new(false);
     if hartid == 0 {
-        // todo: should be put into #[pre_init]
+        __pre_init();
+
+        // todo: crate r0
+
         riscv_sbi::log::init();
         HEAP_ALLOCATOR
             .lock()
@@ -79,6 +89,11 @@ bootstack:
 bootstacktop:
 "#
 );
+
+#[doc(hidden)]
+#[no_mangle]
+#[rustfmt::skip]
+pub unsafe extern "Rust" fn default_pre_init() {}
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {

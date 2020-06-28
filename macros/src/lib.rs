@@ -23,7 +23,7 @@ use syn::{
 ///
 /// - Simple entry point
 ///
-/// ```no_run
+/// ```ignore
 /// #[entry]
 /// fn main(hartid: usize, dtb: usize) {
 ///     println!("Hello, RISC-V SBI!");
@@ -140,7 +140,7 @@ pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
 /// # Example
 ///
 /// - Handle a supervisor timer, print message every 100 * 100000 clocks.
-/// ```no_run
+/// ```ignore
 /// static INTERVAL: u64 = 100000;
 ///
 /// #[interrupt]
@@ -292,7 +292,75 @@ fn random_ident() -> Ident {
     )
 }
 
-/// Extracts `static mut` vars from the beginning of the given statements
+/// Attribute to mark which function will be called at the beginning of supervisor entry point.
+///
+/// The function must have the signature of `unsafe fn()`.
+///
+/// The `pre_init` function defined will be called _before_ the static variables are initialized.
+/// Any access of static variables will result in undefined behavior.
+///
+/// # Examples
+///
+/// ```
+/// # use riscv_sbi_rt_macros::pre_init;
+/// #[pre_init]
+/// unsafe fn before_main() {
+///     // do something here
+/// }
+///
+/// # fn main() {}
+/// ```
+// Ref: https://docs.rs/cortex-m-rt/0.6.12/cortex_m_rt/attr.pre_init.html
+#[proc_macro_attribute]
+pub fn pre_init(args: TokenStream, input: TokenStream) -> TokenStream {
+    let f: ItemFn = syn::parse(input).expect("`#[pre_init]` must be applied to a function");
+
+    // check the function signature
+    let valid_signature = f.sig.constness.is_none()
+        && f.vis == Visibility::Inherited
+        && f.sig.unsafety.is_some()
+        && f.sig.abi.is_none()
+        && f.sig.inputs.is_empty()
+        && f.sig.generics.params.is_empty()
+        && f.sig.generics.where_clause.is_none()
+        && f.sig.variadic.is_none()
+        && match f.sig.output {
+            ReturnType::Default => true,
+            ReturnType::Type(_, ref ty) => match **ty {
+                Type::Tuple(ref tuple) => tuple.elems.is_empty(),
+                _ => false,
+            },
+        };
+
+    if !valid_signature {
+        return parse::Error::new(
+            f.span(),
+            "`#[pre_init]` function must have signature `unsafe fn()`",
+        )
+        .to_compile_error()
+        .into();
+    }
+
+    if !args.is_empty() {
+        return parse::Error::new(Span::call_site(), "This attribute accepts no arguments")
+            .to_compile_error()
+            .into();
+    }
+
+    // XXX should we blacklist other attributes?
+    let attrs = f.attrs;
+    let ident = f.sig.ident;
+    let block = f.block;
+
+    quote!(
+        #[export_name = "__pre_init"]
+        #(#attrs)*
+        pub unsafe fn #ident() #block
+    )
+    .into()
+}
+
+// Extracts `static mut` vars from the beginning of the given statements
 fn extract_static_muts(
     stmts: impl IntoIterator<Item = Stmt>,
 ) -> Result<(Vec<ItemStatic>, Vec<Stmt>), parse::Error> {
