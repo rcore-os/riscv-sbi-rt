@@ -81,9 +81,9 @@ pub unsafe extern "C" fn start_rust(hartid: usize, dtb: usize) -> ! {
         r0::init_data(&mut _sdata, &mut _edata, &_sidata);
 
         riscv_sbi::log::init();
-        // HEAP_ALLOCATOR
-        //     .lock()
-        //     .init(HEAP.as_ptr() as usize, HEAP_SIZE);
+        HEAP_ALLOCATOR
+            .lock()
+            .init(HEAP.as_ptr() as usize, HEAP_SIZE);
 
         READY.store(true, Ordering::Release);
     } else {
@@ -155,24 +155,12 @@ extern "C" fn abort() -> ! {
     panic!("abort!");
 }
 
-/// Returns a pointer to the start of the heap
-///
-/// The returned pointer is guaranteed to be 4-byte aligned.
-#[inline]
-pub fn heap_start() -> *mut usize {
-    extern "C" {
-        static mut _sheap: usize;
-    }
-
-    unsafe { &mut _sheap }
-}
-
 #[global_allocator]
 static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
 
-// const HEAP_SIZE: usize = 0x1_00000;
+const HEAP_SIZE: usize = 0x1_00000;
 
-// static mut HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
+static mut HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
 
 #[alloc_error_handler]
 fn oom(layout: Layout) -> ! {
