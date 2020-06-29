@@ -155,6 +155,18 @@ extern "C" fn abort() -> ! {
     panic!("abort!");
 }
 
+/// Returns a pointer to the start of the heap
+///
+/// The returned pointer is guaranteed to be 4-byte aligned.
+#[inline]
+pub fn heap_start() -> *mut usize {
+    extern "C" {
+        static mut _sheap: usize;
+    }
+
+    unsafe { &mut _sheap }
+}
+
 #[global_allocator]
 static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
 
