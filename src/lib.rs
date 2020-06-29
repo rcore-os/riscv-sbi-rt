@@ -20,6 +20,7 @@ use riscv_sbi::println;
 #[doc(hidden)]
 pub static __ONCE__: () = ();
 
+#[cfg(target_pointer_width = "32")]
 extern "Rust" {
     // Boundaries of the .bss section
     static mut _ebss: u32;
@@ -31,6 +32,20 @@ extern "Rust" {
 
     // Initial values of the .data section (stored in Flash)
     static _sidata: u32;
+}
+
+#[cfg(target_pointer_width = "64")]
+extern "Rust" {
+    // Boundaries of the .bss section
+    static mut _ebss: u64;
+    static mut _sbss: u64;
+
+    // Boundaries of the .data section
+    static mut _edata: u64;
+    static mut _sdata: u64;
+
+    // Initial values of the .data section (stored in Flash)
+    static _sidata: u64;
 }
 
 /// Rust entry point (_start_rust)
