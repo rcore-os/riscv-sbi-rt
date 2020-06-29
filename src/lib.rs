@@ -20,6 +20,19 @@ use riscv_sbi::println;
 #[doc(hidden)]
 pub static __ONCE__: () = ();
 
+extern "Rust" {
+    // Boundaries of the .bss section
+    static mut _ebss: u32;
+    static mut _sbss: u32;
+
+    // Boundaries of the .data section
+    static mut _edata: u32;
+    static mut _sdata: u32;
+
+    // Initial values of the .data section (stored in Flash)
+    static _sidata: u32;
+}
+
 /// Rust entry point (_start_rust)
 ///
 /// # Safety
@@ -35,20 +48,28 @@ pub unsafe extern "C" fn start_rust(hartid: usize, dtb: usize) -> ! {
         // called once before bss and data is initialized
         fn __pre_init();
 
-        // Provided by supervisor implementation
+        // multi-processing hook function
+        // must return true for only one hart which will initialize memory
+        // and execute `pre_init` function
+        // todo: finish design
+        fn _mp_hook(hartid: usize, dtb: usize) -> bool;
+
+        // entry function by supervisor implementation
         fn main(hartid: usize, dtb: usize);
     }
 
     static READY: AtomicBool = AtomicBool::new(false);
-    if hartid == 0 {
+    if _mp_hook(hartid, dtb) {
         __pre_init();
 
-        // todo: crate r0
+        r0::zero_bss(&mut _sbss, &mut _ebss);
+        r0::init_data(&mut _sdata, &mut _edata, &_sidata);
 
         riscv_sbi::log::init();
-        HEAP_ALLOCATOR
-            .lock()
-            .init(HEAP.as_ptr() as usize, HEAP_SIZE);
+        // HEAP_ALLOCATOR
+        //     .lock()
+        //     .init(HEAP.as_ptr() as usize, HEAP_SIZE);
+
         READY.store(true, Ordering::Release);
     } else {
         while !READY.load(Ordering::Acquire) {
@@ -57,13 +78,13 @@ pub unsafe extern "C" fn start_rust(hartid: usize, dtb: usize) -> ! {
     }
 
     // Initialize trap hanlder
-    // 使用 Direct 模式，将中断入口设置为 `_start_trap_sbi`
+    // Use RISC-V defined Default mode, using trap entry `_start_trap_sbi`
     stvec::write(_start_trap_sbi as usize, stvec::TrapMode::Direct);
 
     // Launch main function
     main(hartid, dtb);
 
-    // Shotdown
+    // Shutdown
     riscv_sbi::legacy::shutdown()
 }
 
@@ -95,6 +116,19 @@ bootstacktop:
 #[rustfmt::skip]
 pub unsafe extern "Rust" fn default_pre_init() {}
 
+#[doc(hidden)]
+#[no_mangle]
+#[rustfmt::skip]
+pub unsafe extern "Rust" fn default_mp_hook(hartid: usize, _dtb: usize) -> bool {
+    match hartid {
+        0 => true,
+        // _ => loop {
+        //     unsafe { riscv::asm::wfi() }
+        // }, // todo: wake all harts in supervisor?
+        _ => false,
+    }
+}
+
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
@@ -109,9 +143,9 @@ extern "C" fn abort() -> ! {
 #[global_allocator]
 static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
 
-const HEAP_SIZE: usize = 0x1_00000;
+// const HEAP_SIZE: usize = 0x1_00000;
 
-static mut HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
+// static mut HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
 
 #[alloc_error_handler]
 fn oom(layout: Layout) -> ! {
@@ -134,22 +168,24 @@ fn halt() -> ! {
 #[cfg(target_pointer_width = "64")]
 global_asm!(
     "
+    .equ REGBYTES, 8
     .macro SAVE reg, offset
-        sd  \\reg, \\offset*8(sp)
+        sd  \\reg, \\offset*REGBYTES(sp)
     .endm
     .macro LOAD reg, offset
-        ld  \\reg, \\offset*8(sp)
+        ld  \\reg, \\offset*REGBYTES(sp)
     .endm
 "
 );
 #[cfg(target_pointer_width = "32")]
 global_asm!(
     "
+    .equ REGBYTES, 4
     .macro SAVE reg, offset
-        sw  \\reg, \\offset*4(sp)
+        sw  \\reg, \\offset*REGBYTES(sp)
     .endm
     .macro LOAD reg, offset
-        lw  \\reg, \\offset*4(sp)
+        lw  \\reg, \\offset*REGBYTES(sp)
     .endm
 "
 );
@@ -162,10 +198,10 @@ global_asm!(
 # 保存 Context 并且进入 rust 中的中断处理函数 interrupt::handler::handle_interrupt()
 _start_trap_sbi:
     # 在栈上开辟 Context 所需的空间
-    addi    sp, sp, -34*8 # todo: REGBYTES here
+    addi    sp, sp, -34*REGBYTES
     # 保存通用寄存器，除了 x0（固定为 0）
     SAVE    x1, 1
-    addi    x1, sp, 34*8
+    addi    x1, sp, 34*REGBYTES
     # 将原来的 sp（sp 又名 x2）写入 2 位置
     SAVE    x1, 2
     SAVE    x3, 3
