@@ -137,9 +137,9 @@ pub unsafe extern "Rust" fn default_pre_init() {}
 pub unsafe extern "Rust" fn default_mp_hook(hartid: usize, _dtb: usize) -> bool {
     match hartid {
         0 => true,
-        // _ => loop {
+        // _ => 
         //     unsafe { riscv::asm::wfi() }
-        // }, // todo: wake all harts in supervisor?
+        // , // todo: wake all harts in supervisor?
         _ => false,
     }
 }
