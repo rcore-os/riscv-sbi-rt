@@ -13,14 +13,8 @@ PROVIDE(_mp_hook = default_mp_hook);
 
 /* Allow supervisor to redefine entry point address according to device */
 PROVIDE(_stext = ORIGIN(REGION_TEXT));
-/* Weak heap size, change according to program */
-PROVIDE(_heap_size = 0);
 /* Allow supervisor to redefine stack start according to device */
 PROVIDE(_stack_start = ORIGIN(REGION_STACK) + LENGTH(REGION_STACK));
-/* 默认是单核的，可以在操作系统的linker里覆盖这个值 */
-PROVIDE(_max_hart_id = 0);
-/* 每个核的栈的大小 */
-PROVIDE(_hart_stack_size = 2K);
 
 /* 目标架构 */
 OUTPUT_ARCH(riscv)
@@ -67,15 +61,6 @@ SECTIONS
         _ebss = .;
     } > REGION_BSS
 
-    /* fictitious region that represents the memory available for the heap */
-    .heap (NOLOAD) :
-    {
-        _sheap = .;
-        . += _heap_size;
-        . = ALIGN(4);
-        _eheap = .;
-    } > REGION_HEAP
-
     /* fictitious region that represents the memory available for the stack */
     .stack (INFO) :
     {
@@ -100,9 +85,6 @@ ERROR(riscv-sbi-rt): the start of the REGION_RODATA must be 4-byte aligned");
 ASSERT(ORIGIN(REGION_DATA) % 4 == 0, "
 ERROR(riscv-sbi-rt): the start of the REGION_DATA must be 4-byte aligned");
 
-ASSERT(ORIGIN(REGION_HEAP) % 4 == 0, "
-ERROR(riscv-rt): the start of the REGION_HEAP must be 4-byte aligned");
-
 ASSERT(ORIGIN(REGION_STACK) % 4 == 0, "
 ERROR(riscv-rt): the start of the REGION_STACK must be 4-byte aligned");
 
@@ -118,13 +100,6 @@ BUG(riscv-sbi-rt): the LMA of .data is not 4-byte aligned");
 ASSERT(_sbss % 4 == 0 && _ebss % 4 == 0, "
 BUG(riscv-sbi-rt): .bss is not 4-byte aligned");
 
-ASSERT(_sheap % 4 == 0, "
-BUG(riscv-rt): start of .heap is not 4-byte aligned");
-
 ASSERT(_stext + SIZEOF(.text) < ORIGIN(REGION_TEXT) + LENGTH(REGION_TEXT), "
 ERROR(riscv-sbi-rt): The .text section must be placed inside the REGION_TEXT region.
 Set _stext to an address smaller than 'ORIGIN(REGION_TEXT) + LENGTH(REGION_TEXT)'");
-
-ASSERT(SIZEOF(.stack) > (_max_hart_id + 1) * _hart_stack_size, "
-ERROR(riscv-sbi-rt): .stack section is too small for allocating stacks for all the harts.
-Consider changing `_max_hart_id` or `_hart_stack_size`.");
