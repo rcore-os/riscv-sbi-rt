@@ -126,24 +126,26 @@ _start:
     // mv tp, a0 /* todo: thread pointer */
 
     /* Prepare hart for each stack */
+    /* Load symbols */
     la sp, _stack_start
     lui t0, %hi(_hart_stack_size)
     add t0, t0, %lo(_hart_stack_size)
 
-    // .ifdef __riscv_mul /* todo: no mul extension */
+    /* Calculate stack address */
+    .ifdef __riscv_mul 
     mul t0, a0, t0
-    // .else
-//     beqz a2, 2f  /* jump if single-hart (a2 equals zero) */
-//     mv t1, a0
-//     mv t2, t0
-// 1:
-//     add t0, t0, t2
-//     addi t1, t1, -1
-//     bnez t1, 1b
-// 2:
-    // .endif
+    .else
+    beqz a0, 2f  /* jump if single-hart (a0 equals zero) */
+    mv t1, a0
+    mv t2, t0
+1:
+    add t0, t0, t2
+    addi t1, t1, -1
+    bnez t1, 1b
+2:
+    .endif
 
-    // sll t0, a0, 14
+    /* Load stack address for this hart */
     sub sp, sp, t0
 
     /* Jump to rust entry function */
