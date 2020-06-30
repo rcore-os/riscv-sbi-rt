@@ -96,20 +96,6 @@ pub unsafe extern "C" fn start_rust(hartid: usize, dtb: usize) -> ! {
     // Use RISC-V defined Default mode, using trap entry `_start_trap_sbi`
     stvec::write(_start_trap_sbi as usize, stvec::TrapMode::Direct);
 
-    extern {
-        static _sstack: u8;
-        static _stack_start: u8;
-        static _estack: u8;
-    }
-
-        // println!("sstack: 0x{:0x}", &_sstack as *const _ as usize);
-        // println!("estack: 0x{:0x}", &_estack as *const _ as usize);
-        // println!("_stack_start: 0x{:0x}", &_stack_start as *const _ as usize);
-        
-    // let mut sp: usize;
-    // llvm_asm!("mv $0, sp;":"=r"(sp));
-    // println!("sp: 0x{:0x}", sp);
-
     // Launch main function
     main(hartid, dtb);
 
@@ -164,6 +150,7 @@ _start:
     jal zero, _start_rust
 
 _start_abort:
+    wfi
     j _start_abort
 "#
 );
