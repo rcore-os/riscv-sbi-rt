@@ -17,6 +17,8 @@ PROVIDE(_max_hart_id = 0);
 /* Supervisor stack size for each hart; default to 2K per hart, can be redefined by user */
 /* Used in initializing stack for each hart in runtime */
 PROVIDE(_hart_stack_size = 2K);
+/* Provide supervisor frame size; must be times of 4K */
+PROVIDE(_frame_size = 0);
 /* Allow supervisor to redefine entry point address according to device */
 PROVIDE(_stext = ORIGIN(REGION_TEXT));
 /* Allow supervisor to redefine stack start according to device */
@@ -69,9 +71,15 @@ SECTIONS
         _ebss = .;
     } > REGION_BSS
 
+    .frame (INFO) : ALIGN(4K) {
+        _sframe = .;
+        . += _frame_size;
+        . = ALIGN(4K);
+        _eframe = .;
+    } > REGION_FRAME
+
     /* fictitious region that represents the memory available for the stack */
-    .stack (INFO) :
-    {
+    .stack (INFO) : {
         _estack = .;
         . = _stack_start;
         _sstack = .;
@@ -96,7 +104,7 @@ ASSERT(ORIGIN(REGION_DATA) % 4 == 0, "
 ERROR(riscv-sbi-rt): the start of the REGION_DATA must be 4-byte aligned");
 
 ASSERT(ORIGIN(REGION_STACK) % 4 == 0, "
-ERROR(riscv-rt): the start of the REGION_STACK must be 4-byte aligned");
+ERROR(riscv-sbi-rt): the start of the REGION_STACK must be 4-byte aligned");
 
 ASSERT(_stext % 4 == 0, "
 ERROR(riscv-sbi-rt): `_stext` must be 4-byte aligned");
@@ -109,6 +117,12 @@ BUG(riscv-sbi-rt): the LMA of .data is not 4-byte aligned");
 
 ASSERT(_sbss % 4 == 0 && _ebss % 4 == 0, "
 BUG(riscv-sbi-rt): .bss is not 4-byte aligned");
+
+ASSERT(_sframe % 4K == 0 && _eframe % 4K == 0, "
+BUG(riscv-sbi-rt): .frame is not 4K-byte aligned");
+
+ASSERT(_frame_size % 4K == 0, "
+ERROR(riscv-sbi-rt): `_frame_size` must be times of 4Kbytes");
 
 ASSERT(_stext + SIZEOF(.text) < ORIGIN(REGION_TEXT) + LENGTH(REGION_TEXT), "
 ERROR(riscv-sbi-rt): The .text section must be placed inside the REGION_TEXT region.
