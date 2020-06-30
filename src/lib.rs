@@ -110,19 +110,13 @@ global_asm!(
 _start:
     mv tp, a0
 
-    la sp, bootstack
-    sll t0, a0, 14
-    add sp, sp, t0
+    la sp, _stack_start
+    
+    /* Todo: stack for each hart */
+    // sll t0, a0, 14
+    // add sp, sp, t0
 
     call _start_rust
-
-    .section .bss.stack
-    .align 12
-    .global bootstack
-bootstack:
-    .space 4096 * 4 * 4
-    .global bootstacktop
-bootstacktop:
 "#
 );
 
