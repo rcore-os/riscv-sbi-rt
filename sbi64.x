@@ -90,8 +90,6 @@ SECTIONS
     {
         *(.eh_frame);
     }
-    /* todo: ?? heap? */
-    supervisor_end = .;
 }
 
 ASSERT(ORIGIN(REGION_TEXT) % 4 == 0, "
