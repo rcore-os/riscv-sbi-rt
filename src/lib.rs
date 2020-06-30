@@ -12,7 +12,6 @@ pub use riscv_sbi_rt_macros::{entry, interrupt, pre_init};
 use core::alloc::Layout;
 use core::panic::PanicInfo;
 use core::sync::atomic::*;
-use linked_list_allocator::LockedHeap;
 use riscv::register::{scause::Scause, sstatus::Sstatus, stvec};
 use riscv_sbi::println;
 
@@ -81,9 +80,6 @@ pub unsafe extern "C" fn start_rust(hartid: usize, dtb: usize) -> ! {
         r0::init_data(&mut _sdata, &mut _edata, &_sidata);
 
         riscv_sbi::log::init();
-        HEAP_ALLOCATOR
-            .lock()
-            .init(HEAP.as_ptr() as usize, HEAP_SIZE);
 
         READY.store(true, Ordering::Release);
     } else {
@@ -162,16 +158,17 @@ _start_abort:
 #[rustfmt::skip]
 pub unsafe extern "Rust" fn default_pre_init() {}
 
+// by default, other harts other than hart zero won't be started.
+// if you need to start these cores, redefine your `_mp_hook` function.
 #[doc(hidden)]
 #[no_mangle]
 #[rustfmt::skip]
 pub unsafe extern "Rust" fn default_mp_hook(hartid: usize, _dtb: usize) -> bool {
     match hartid {
         0 => true,
-        // _ => 
-        //     unsafe { riscv::asm::wfi() }
-        // , // todo: wake all harts in supervisor?
-        _ => false,
+        _ => loop {
+            riscv::asm::wfi()
+        }, 
     }
 }
 
@@ -185,13 +182,6 @@ fn panic(info: &PanicInfo) -> ! {
 extern "C" fn abort() -> ! {
     panic!("abort!");
 }
-
-#[global_allocator]
-static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
-
-const HEAP_SIZE: usize = 0x100_0000;
-
-static mut HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
 
 #[alloc_error_handler]
 fn oom(layout: Layout) -> ! {
