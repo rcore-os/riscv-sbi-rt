@@ -113,6 +113,18 @@ _start:
     la gp, __global_pointer$
     .option pop
 
+    # 计算 boot_page_table 的物理页号
+    lui t0, %hi(boot_page_table)
+    li t1, 0xffffffff00000000
+    sub t0, t0, t1
+    srli t0, t0, 12
+    # 8 << 60 是 satp 中使用 Sv39 模式的记号
+    li t1, (8 << 60)
+    or t0, t0, t1
+    # 写入 satp 并更新 TLB
+    csrw satp, t0
+    sfence.vma
+
     /* Check hard id limit */
     /* Do not read mhartid, here's supervisor level, would result in exception */
     lui t0, %hi(_max_hart_id)
@@ -145,11 +157,25 @@ _start:
     sub sp, sp, t0
 
     /* Jump to rust entry function */
-    jal zero, _start_rust
+    lui t0, %hi(_start_rust)
+    addi t0, t0, %lo(_start_rust)
+    jr t0
 
 _start_abort:
     wfi
     j _start_abort
+
+    .section .data
+    .align 12
+boot_page_table:
+    .quad 0
+    .quad 0
+    /* Item 2: 0x8000_0000 -> 0x8000_0000，0xcf means that VRWXAD are all 1 */
+    .quad (0x80000 << 10) | 0xcf
+    .zero 507 * 8
+    /* Item 510: 项：0xffff_ffff_8000_0000 -> 0x8000_0000，0xcf means that VRWXAD are all 1 */
+    .quad (0x80000 << 10) | 0xcf
+    .quad 0
 "#
 );
 

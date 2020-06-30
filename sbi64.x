@@ -41,16 +41,14 @@ SECTIONS
     } > REGION_TEXT
 
     /* .rodata 字段 */
-    .rodata : {
+    .rodata : ALIGN(4K) {
         /* 要链接的文件的 .rodata 字段集中放在这里 */
         *(.rodata .rodata.*)
+        . = ALIGN(4K);
     } > REGION_RODATA
 
-/* todo: align 4 bytes for XLEN=32, 8 bytes for XLEN=64 */
-/* not required by riscv standard, but for higher effiency of rust's `r0` crate */
-
     /* .data 字段 */
-    .data : ALIGN(4) { 
+    .data : ALIGN(4K) { 
         _sidata = LOADADDR(.data);
         _sdata = .;
         /* Must be called __global_pointer$ for linker relaxations to work. */
@@ -58,16 +56,16 @@ SECTIONS
         /* 要链接的文件的 .data 字段集中放在这里 */
         *(.sdata .sdata.* .sdata2 .sdata2.*);
         *(.data .data.*)
-        . = ALIGN(4);
+        . = ALIGN(4K);
         _edata = .;
     } > REGION_DATA
 
     /* .bss 字段 */
-    .bss (NOLOAD) : ALIGN(4) {
+    .bss (NOLOAD) : ALIGN(4K) {
         _sbss = .;
         /* 要链接的文件的 .bss 字段集中放在这里 */
         *(.sbss .bss .bss.*)
-        . = ALIGN(4);
+        . = ALIGN(4K);
         _ebss = .;
     } > REGION_BSS
 
@@ -79,9 +77,10 @@ SECTIONS
     } > REGION_FRAME
 
     /* fictitious region that represents the memory available for the stack */
-    .stack (INFO) : {
+    .stack (INFO) : ALIGN(4K) {
         _estack = .;
         . = _stack_start;
+        . = ALIGN(4K);
         _sstack = .;
     } > REGION_STACK
 
