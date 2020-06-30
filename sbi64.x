@@ -11,6 +11,12 @@ PROVIDE(SupervisorExternal = DefaultHandler);
 PROVIDE(__pre_init = default_pre_init);
 PROVIDE(_mp_hook = default_mp_hook);
 
+/* Maximum hart id, can be defined by user */
+/* Used to calculate stack size limit in runtime */
+PROVIDE(_max_hart_id = 0);
+/* Supervisor stack size for each hart; default to 2K per hart, can be redefined by user */
+/* Used in initializing stack for each hart in runtime */
+PROVIDE(_hart_stack_size = 2K);
 /* Allow supervisor to redefine entry point address according to device */
 PROVIDE(_stext = ORIGIN(REGION_TEXT));
 /* Allow supervisor to redefine stack start according to device */
@@ -45,6 +51,8 @@ SECTIONS
     .data : ALIGN(4) { 
         _sidata = LOADADDR(.data);
         _sdata = .;
+        /* Must be called __global_pointer$ for linker relaxations to work. */
+        PROVIDE(__global_pointer$ = . + 0x800);
         /* 要链接的文件的 .data 字段集中放在这里 */
         *(.sdata .sdata.* .sdata2 .sdata2.*);
         *(.data .data.*)
@@ -105,3 +113,7 @@ BUG(riscv-sbi-rt): .bss is not 4-byte aligned");
 ASSERT(_stext + SIZEOF(.text) < ORIGIN(REGION_TEXT) + LENGTH(REGION_TEXT), "
 ERROR(riscv-sbi-rt): The .text section must be placed inside the REGION_TEXT region.
 Set _stext to an address smaller than 'ORIGIN(REGION_TEXT) + LENGTH(REGION_TEXT)'");
+
+ASSERT(SIZEOF(.stack) > (_max_hart_id + 1) * _hart_stack_size, "
+ERROR(riscv-rt): .stack section is too small for allocating stacks for all the harts.
+Consider changing `_max_hart_id` or `_hart_stack_size`.");

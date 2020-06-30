@@ -56,7 +56,7 @@ extern "Rust" {
 #[export_name = "_start_rust"]
 pub unsafe extern "C" fn start_rust(hartid: usize, dtb: usize) -> ! {
     #[rustfmt::skip]
-    extern "Rust" {
+    extern "C" {
         // interrupt entry provided by assemble
         fn _start_trap_sbi();
 
@@ -96,6 +96,20 @@ pub unsafe extern "C" fn start_rust(hartid: usize, dtb: usize) -> ! {
     // Use RISC-V defined Default mode, using trap entry `_start_trap_sbi`
     stvec::write(_start_trap_sbi as usize, stvec::TrapMode::Direct);
 
+    extern {
+        static _sstack: u8;
+        static _stack_start: u8;
+        static _estack: u8;
+    }
+
+        // println!("sstack: 0x{:0x}", &_sstack as *const _ as usize);
+        // println!("estack: 0x{:0x}", &_estack as *const _ as usize);
+        // println!("_stack_start: 0x{:0x}", &_stack_start as *const _ as usize);
+        
+    // let mut sp: usize;
+    // llvm_asm!("mv $0, sp;":"=r"(sp));
+    // println!("sp: 0x{:0x}", sp);
+
     // Launch main function
     main(hartid, dtb);
 
@@ -108,15 +122,49 @@ global_asm!(
     .section .text.entry
     .globl _start
 _start:
-    mv tp, a0
-
-    la sp, _stack_start
+    /* a0: hart id */
+    /* a1: device tree root */
     
-    /* Todo: stack for each hart */
-    // sll t0, a0, 14
-    // add sp, sp, t0
+    /* Setup global pointer */
+    .option push
+    .option norelax
+    la gp, __global_pointer$
+    .option pop
 
-    call _start_rust
+    /* Check hard id limit */
+    /* Do not read mhartid, here's supervisor level, would result in exception */
+    lui t0, %hi(_max_hart_id)
+    add t0, t0, %lo(_max_hart_id)
+    bgtu a0, t0, _start_abort
+    
+    // mv tp, a0 /* todo: thread pointer */
+
+    /* Prepare hart for each stack */
+    la sp, _stack_start
+    lui t0, %hi(_hart_stack_size)
+    add t0, t0, %lo(_hart_stack_size)
+
+    // .ifdef __riscv_mul /* todo: no mul extension */
+    mul t0, a0, t0
+    // .else
+//     beqz a2, 2f  /* jump if single-hart (a2 equals zero) */
+//     mv t1, a0
+//     mv t2, t0
+// 1:
+//     add t0, t0, t2
+//     addi t1, t1, -1
+//     bnez t1, 1b
+// 2:
+    // .endif
+
+    // sll t0, a0, 14
+    sub sp, sp, t0
+
+    /* Jump to rust entry function */
+    jal zero, _start_rust
+
+_start_abort:
+    j _start_abort
 "#
 );
 
@@ -152,7 +200,7 @@ extern "C" fn abort() -> ! {
 #[global_allocator]
 static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
 
-const HEAP_SIZE: usize = 0x1_00000;
+const HEAP_SIZE: usize = 0x100_0000;
 
 static mut HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
 
