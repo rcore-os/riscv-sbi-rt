@@ -113,18 +113,6 @@ _start:
     la gp, __global_pointer$
     .option pop
 
-    # 计算 boot_page_table 的物理页号
-    lui t0, %hi(boot_page_table)
-    li t1, 0xffffffff00000000
-    sub t0, t0, t1
-    srli t0, t0, 12
-    # 8 << 60 是 satp 中使用 Sv39 模式的记号
-    li t1, (8 << 60)
-    or t0, t0, t1
-    # 写入 satp 并更新 TLB
-    csrw satp, t0
-    sfence.vma
-
     /* Check hard id limit */
     /* Do not read mhartid, here's supervisor level, would result in exception */
     lui t0, %hi(_max_hart_id)
@@ -155,6 +143,22 @@ _start:
 
     /* Load stack address for this hart */
     sub sp, sp, t0
+
+    # 计算 boot_page_table 的物理页号
+    lui t0, %hi(boot_page_table)
+    li t1, 0xffffffff00000000
+    sub t0, t0, t1
+    srli t0, t0, 12
+    # 8 << 60 是 satp 中使用 Sv39 模式的记号
+    li t1, (8 << 60)
+    or t0, t0, t1
+    # 写入 satp 并更新 TLB
+    csrw satp, t0
+    sfence.vma
+
+    /* Convert stack address for this hart into virtual address */
+    li t1, 0xffffffff00000000
+    add sp, sp, t1
 
     /* Jump to rust entry function */
     lui t0, %hi(_start_rust)
