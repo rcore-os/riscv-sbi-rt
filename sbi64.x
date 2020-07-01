@@ -38,13 +38,16 @@ SECTIONS
         *(.text.entry)
         /* 要链接的文件的 .text 字段集中放在这里 */
         *(.text .text.*)
+        _etext = .;
     } > REGION_TEXT
 
     /* .rodata 字段 */
     .rodata : ALIGN(4K) {
+        _srodata = .;
         /* 要链接的文件的 .rodata 字段集中放在这里 */
         *(.rodata .rodata.*)
         . = ALIGN(4K);
+        _erodata = .;
     } > REGION_RODATA
 
     /* .data 字段 */
