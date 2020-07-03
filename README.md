@@ -7,7 +7,7 @@ A mininal runtime / startup for Supervisor Binary Interface (SBI) on RISC-V.
 ## Features
 
 - [x] Minimal entry runtime & pre-init
-- [x] Hanlding traps (interrupts and exceptions)
+- [x] Handling traps (interrupts and exceptions)
 - [x] Friendly macros and compile time checks
 - [x] Preparation for frame and page system
 
@@ -15,7 +15,7 @@ Todo:
 
 - [ ] Support for switching between contexts
 - [ ] Prepare for user mode, support for system calls
-- [ ] Proper support for No-RTOS without paging system
+- [ ] Proper support for RTOS without paging system
 
 ## Example
 
