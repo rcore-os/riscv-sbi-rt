@@ -200,7 +200,10 @@ pub fn interrupt(args: TokenStream, input: TokenStream) -> TokenStream {
         Ok(x) => x,
     };
 
-    f.sig.ident = Ident::new(&format!("__riscv_sbi_rt_{}", f.sig.ident), Span::call_site());
+    f.sig.ident = Ident::new(
+        &format!("__riscv_sbi_rt_{}", f.sig.ident),
+        Span::call_site(),
+    );
     f.sig.inputs.extend(statics.iter().map(|statik| {
         let ident = &statik.ident;
         let ty = &statik.ty;

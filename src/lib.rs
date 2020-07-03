@@ -446,9 +446,17 @@ pub fn DefaultInterruptHandler() {
 ///
 /// This function should only be called by trap initializer assembly code.
 #[export_name = "_start_trap_rust"]
-pub unsafe fn start_trap_rust(trap_frame: *mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame {
+pub unsafe fn start_trap_rust(
+    trap_frame: *mut TrapFrame,
+    scause: Scause,
+    stval: usize,
+) -> *mut TrapFrame {
     extern "Rust" {
-        fn ExceptionHandler(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
+        fn ExceptionHandler(
+            trap_frame: &mut TrapFrame,
+            scause: Scause,
+            stval: usize,
+        ) -> *mut TrapFrame;
     }
 
     if scause.is_exception() {
@@ -531,7 +539,11 @@ extern "Rust" {
     fn UserTimer(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
     fn SupervisorTimer(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
     fn UserExternal(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
-    fn SupervisorExternal(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
+    fn SupervisorExternal(
+        trap_frame: &mut TrapFrame,
+        scause: Scause,
+        stval: usize,
+    ) -> *mut TrapFrame;
 
     fn DefaultHandler();
 }
