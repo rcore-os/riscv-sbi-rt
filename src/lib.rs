@@ -99,21 +99,81 @@ pub unsafe extern "C" fn start_rust(hartid: usize, dtb: usize) -> ! {
     riscv_sbi::legacy::shutdown()
 }
 
+#[cfg(target_pointer_width = "32")]
 global_asm!(
     r#"
     .section .text.entry
     .globl _start
 _start:
+    /* Todo: paging system for 32-bit environment */
+
+    lui ra, %hi(_abs_start)
+    jr %lo(_abs_start)(ra)
+"#
+);
+
+#[cfg(target_pointer_width = "64")]
+global_asm!(
+    r#"
+    .section .text.entry
+    .globl _start
+_start:
+    /* On system boot, we use Sv39 paging system. After boot succeeded, 
+        operating system may switch to other paging systems. */
+
+    /* load address of boot_page_table and calculate its page number */
+    la t0, boot_page_table
+    srli t0, t0, 12
+    li t1, (8 << 60)    /* Use Sv39 in satp register */
+    or t0, t0, t1
+    /* Write to satp and refresh TLB */
+    csrw satp, t0       
+    sfence.vma          
+
+    /* Jump to actual virtual start address */
+.option push
+.option norelax /* to prevent an unsupported R_RISCV_ALIGN relocation from being generated */
+1:
+    auipc ra, %pcrel_hi(1f)
+    ld ra, %pcrel_lo(1b)(ra)
+    jr ra
+    .align  3
+1:
+    .dword _abs_start
+.option pop
+
+    /* Boot page table (initial kernal mapping). Can be recycled afterwards */
+    .section .data
+    .align 12
+    .global boot_page_table
+    boot_page_table:
+    .quad 0
+    .quad 0
+    .quad (0x80000 << 10) | 0xcf /* Item 2: 0x0000000_80000000 -> 0x80000000 + VRWXAD (0xCF) */
+    .zero 505 * 8
+    .quad (0x00000 << 10) | 0xcf /* Item 508: 0xffffffff_00000000 -> 0x00000000 + VRWXAD (0xCF) */
+    .quad 0
+    .quad (0x80000 << 10) | 0xcf /* Item 510: 0xffffffff_80000000 -> 0x80000000 + VRWXAD (0xCF) */
+    .quad 0
+"#
+);
+
+global_asm!(
+    r#"
+_abs_start:
+    .cfi_startproc
+    .cfi_undefined ra
+
     /* a0: hart id */
     /* a1: device tree root */
-    
+
     /* Setup global pointer */
     .option push
     .option norelax
     la gp, __global_pointer$
     .option pop
 
-    /* Check hard id limit */
+    /* Check hart id limit */
     /* Do not read mhartid, here's supervisor level, would result in exception */
     lui t0, %hi(_max_hart_id)
     add t0, t0, %lo(_max_hart_id)
@@ -144,47 +204,14 @@ _start:
     /* Load stack address for this hart */
     sub sp, sp, t0
 
-    # 计算 boot_page_table 的物理页号
-    lui t0, %hi(boot_page_table)
-    li t1, 0xffffffff00000000
-    sub t0, t0, t1
-    srli t0, t0, 12
-    # 8 << 60 是 satp 中使用 Sv39 模式的记号
-    li t1, (8 << 60)
-    or t0, t0, t1
-    # 写入 satp 并更新 TLB
-    csrw satp, t0
-    sfence.vma
-
-    /* Convert stack address for this hart into virtual address */
-    li t1, 0xffffffff00000000
-    add sp, sp, t1
-
     /* Jump to rust entry function */
-    lui t0, %hi(_start_rust)
-    addi t0, t0, %lo(_start_rust)
-    jr t0
+    j _start_rust
+
+    .cfi_endproc
 
 _start_abort:
     wfi
     j _start_abort
-
-    # 初始内核映射所用的页表
-    .section .data
-    .align 12
-    .global boot_page_table
-boot_page_table:
-    .quad 0
-    .quad 0
-    # 第 2 项：0x8000_0000 -> 0x8000_0000，0xcf 表示 VRWXAD 均为 1
-    .quad (0x80000 << 10) | 0xcf
-    .zero 505 * 8
-    # 第 508 项：0xffff_ffff_0000_0000 -> 0x0000_0000，0xcf 表示 VRWXAD 均为 1
-    .quad (0x00000 << 10) | 0xcf
-    .quad 0
-    # 第 510 项：0xffff_ffff_8000_0000 -> 0x8000_0000，0xcf 表示 VRWXAD 均为 1
-    .quad (0x80000 << 10) | 0xcf
-    .quad 0
 "#
 );
 
@@ -327,7 +354,7 @@ _trap_save_from_user:
 # 从 Context 中恢复所有寄存器，并跳转至 Context 中 sepc 的位置
 __restore:
     /* 多线程环境下恢复上下文 */
-    mv      sp, a0
+    // mv      sp, a0
 
     # 恢复 CSR
     LOAD    t0, 32
