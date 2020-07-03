@@ -268,6 +268,11 @@ global_asm!(
 # 进入中断
 # 保存 Context 并且进入 rust 中的中断处理函数 interrupt::handler::handle_interrupt()
 _start_trap_sbi:
+    csrrw   sp, sscratch, sp
+    bnez    sp, _trap_save_from_user
+_trap_save_from_kernel:
+    csrr    sp, sscratch
+_trap_save_from_user:
     # 在栈上开辟 Context 所需的空间
     addi    sp, sp, -34*REGBYTES
     # 保存通用寄存器，除了 x0（固定为 0）
@@ -312,22 +317,35 @@ _start_trap_sbi:
     SAVE    s2, 33
 
     # Context, scause 和 stval 作为参数传入
-    mv a0, sp
-    csrr a1, scause
-    csrr a2, stval
-    jal _start_trap_rust
+    mv      a0, sp
+    csrr    a1, scause
+    csrr    a2, stval
+    jal     _start_trap_rust
 
     .globl __restore
 # 离开中断
 # 从 Context 中恢复所有寄存器，并跳转至 Context 中 sepc 的位置
 __restore:
-    # 恢复 CSR
-    LOAD    s1, 32
-    LOAD    s2, 33
-    # 不恢复 scause 和 stval
-    csrw    sstatus, s1
-    csrw    sepc, s2
+    /* 多线程环境下恢复上下文 */
+    mv      sp, a0
 
+    # 恢复 CSR
+    LOAD    t0, 32
+    LOAD    t1, 33
+    # 不恢复 scause 和 stval
+    csrw    sstatus, t0
+    csrw    sepc, t1
+
+    # 根据即将恢复的线程属于用户还是内核，恢复 sscratch
+    # 检查 sstatus 上的 SPP 标记
+    andi    t0, t0, 1 << 8
+    bnez    t0, _trap_load_to_kernel
+_trap_load_to_user:
+    # 将要进入用户态，需要将内核栈地址写入 sscratch
+    addi    t0, sp, 36*REGBYTES
+    csrw    sscratch, t0
+_trap_load_to_kernel:
+    # 如果要进入内核态，sscratch 保持为 0 不变
     # 恢复通用寄存器
     LOAD    x1, 1
     LOAD    x3, 3
