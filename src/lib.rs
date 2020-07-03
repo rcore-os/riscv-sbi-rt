@@ -354,7 +354,7 @@ _trap_save_from_user:
 # 从 Context 中恢复所有寄存器，并跳转至 Context 中 sepc 的位置
 __restore:
     /* 多线程环境下恢复上下文 */
-    // mv      sp, a0
+    mv      sp, a0
 
     # 恢复 CSR
     LOAD    t0, 32
@@ -412,6 +412,7 @@ _trap_load_to_kernel:
 );
 
 /// Saved trap frame
+#[derive(Clone, Debug)]
 pub struct TrapFrame {
     /// 32 common registers
     pub x: [usize; 32],
@@ -445,9 +446,9 @@ pub fn DefaultInterruptHandler() {
 ///
 /// This function should only be called by trap initializer assembly code.
 #[export_name = "_start_trap_rust"]
-pub unsafe fn start_trap_rust(trap_frame: *mut TrapFrame, scause: Scause, stval: usize) {
+pub unsafe fn start_trap_rust(trap_frame: *mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame {
     extern "Rust" {
-        fn ExceptionHandler(trap_frame: &mut TrapFrame, scause: Scause, stval: usize);
+        fn ExceptionHandler(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
     }
 
     if scause.is_exception() {
@@ -457,9 +458,10 @@ pub unsafe fn start_trap_rust(trap_frame: *mut TrapFrame, scause: Scause, stval:
         if code < __INTERRUPTS.len() {
             let h = &__INTERRUPTS[code];
             // if reserved, it would call DefaultHandler
-            (h.handler)();
+            (h.handler)(&mut *trap_frame, scause, stval)
         } else {
             DefaultHandler();
+            trap_frame
         }
     }
 }
@@ -481,7 +483,7 @@ pub mod trap {
 
 #[doc(hidden)]
 pub union Vector {
-    handler: unsafe fn(),
+    handler: unsafe fn(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame,
     reserved: unsafe fn(),
     invalid: unsafe fn(),
 }
@@ -524,12 +526,12 @@ pub static __INTERRUPTS: [Vector; 12] = [
 ];
 
 extern "Rust" {
-    fn UserSoft();
-    fn SupervisorSoft();
-    fn UserTimer();
-    fn SupervisorTimer();
-    fn UserExternal();
-    fn SupervisorExternal();
+    fn UserSoft(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
+    fn SupervisorSoft(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
+    fn UserTimer(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
+    fn SupervisorTimer(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
+    fn UserExternal(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
+    fn SupervisorExternal(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
 
     fn DefaultHandler();
 }
