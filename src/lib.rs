@@ -53,7 +53,7 @@ extern "Rust" {
 ///
 /// This function should only be called by startup assembly code
 #[export_name = "_start_rust"]
-pub unsafe extern "C" fn start_rust(hartid: usize, dtb: usize) -> ! {
+pub unsafe extern "C" fn start_rust(hartid: usize, dtb_pa: usize) -> ! {
     #[rustfmt::skip]
     extern "C" {
         // interrupt entry provided by assemble
@@ -66,14 +66,14 @@ pub unsafe extern "C" fn start_rust(hartid: usize, dtb: usize) -> ! {
         // must return true for only one hart which will initialize memory
         // and execute `pre_init` function
         // todo: finish design
-        fn _mp_hook(hartid: usize, dtb: usize) -> bool;
+        fn _mp_hook(hartid: usize, dtb_pa: usize) -> bool;
 
         // entry function by supervisor implementation
-        fn main(hartid: usize, dtb: usize);
+        fn main(hartid: usize, dtb_pa: usize);
     }
 
     static READY: AtomicBool = AtomicBool::new(false);
-    if _mp_hook(hartid, dtb) {
+    if _mp_hook(hartid, dtb_pa) {
         __pre_init();
 
         r0::zero_bss(&mut _sbss, &mut _ebss);
@@ -93,7 +93,7 @@ pub unsafe extern "C" fn start_rust(hartid: usize, dtb: usize) -> ! {
     stvec::write(_start_trap_sbi as usize, stvec::TrapMode::Direct);
 
     // Launch main function
-    main(hartid, dtb);
+    main(hartid, dtb_pa);
 
     // Shutdown
     riscv_sbi::legacy::shutdown()
@@ -225,7 +225,7 @@ pub unsafe extern "Rust" fn default_pre_init() {}
 #[doc(hidden)]
 #[no_mangle]
 #[rustfmt::skip]
-pub unsafe extern "Rust" fn default_mp_hook(hartid: usize, _dtb: usize) -> bool {
+pub unsafe extern "Rust" fn default_mp_hook(hartid: usize, _dtb_pa: usize) -> bool {
     match hartid {
         0 => true,
         _ => loop {

@@ -17,7 +17,7 @@ use syn::{
 /// for details.
 ///
 /// Users should provide specified function with signature `fn main(usize, usize)`.
-/// For example, you may consider using `fn main(hartid: usize, dtb: usize)`.
+/// For example, you may consider using `fn main(hartid: usize, dtb_pa: usize)`.
 ///
 /// # Examples
 ///
@@ -25,9 +25,9 @@ use syn::{
 ///
 /// ```ignore
 /// #[entry]
-/// fn main(hartid: usize, dtb: usize) {
+/// fn main(hartid: usize, dtb_pa: usize) {
 ///     println!("Hello, RISC-V SBI!");
-///     println!("hartid={}, dtb={:#x}", hartid, dtb);
+///     println!("hartid={}, dtb_pa={:#x}", hartid, dtb_pa);
 /// }
 /// ```
 // Ref: https://github.com/rust-embedded/riscv-rt/blob/master/macros/src/lib.rs
@@ -83,7 +83,7 @@ pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
     if !valid_signature {
         return parse::Error::new(
             f.span(),
-            "`#[entry]` function must have signature `fn main(hartid: usize, dtb: usize)`",
+            "`#[entry]` function must have signature `fn main(hartid: usize, dtb_pa: usize)`",
         )
         .to_compile_error()
         .into();
