@@ -301,11 +301,12 @@ _trap_save_from_kernel:
     csrr    sp, sscratch
 _trap_save_from_user:
     # 在栈上开辟 Context 所需的空间
-    addi    sp, sp, -34*REGBYTES
+    addi    sp, sp, -36*REGBYTES
     # 保存通用寄存器，除了 x0（固定为 0）
     SAVE    x1, 1
-    addi    x1, sp, 34*REGBYTES
-    # 将原来的 sp（sp 又名 x2）写入 2 位置
+    # 将原来的 sp（即 x2）保存
+    # 同时 sscratch 写 0，因为即将进入*内核线程*的中断处理流程
+    csrrw   x1, sscratch, x0
     SAVE    x1, 2
     SAVE    x3, 3
     SAVE    x4, 4
