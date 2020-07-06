@@ -204,6 +204,9 @@ _abs_start:
     /* Load stack address for this hart */
     sub sp, sp, t0
 
+    /* If entry function returns, it should abort */
+    la ra, _start_abort
+    
     /* Jump to rust entry function */
     j _start_rust
 
