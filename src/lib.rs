@@ -298,94 +298,116 @@ global_asm!(
 # 进入中断
 # 保存 Context 并且进入 rust 中的中断处理函数
 _start_trap_sbi:
+    # 因为线程当前的栈不一定可用，必须切换到内核栈来保存 Context 并进行中断流程
+    # 因此，我们使用 sscratch 寄存器保存内核栈地址
+    # 思考：sscratch 的值最初是在什么地方写入的？
+
+    # 交换 sp 和 sscratch（切换到内核栈）
     csrrw   sp, sscratch, sp
-    bnez    sp, _trap_save_from_user
-_trap_save_from_kernel:
-    csrr    sp, sscratch
-_trap_save_from_user:
-    # 此时 sscratch：原先的 sp；sp：内核栈地址
-    # 在内核栈开辟 Context 所需的空间
-    addi    sp, sp, -19*REGBYTES
-    SAVE    ra, 0
-    # 将原来的 sp 保存（x1=ra）
-    # 同时 sscratch 写 0，因为即将进入*内核线程*的中断处理流程
-    csrrw   x1, sscratch, zero 
-    SAVE    x1, 16    # 原先的sp
-    # 保存通用寄存器
-    SAVE    t0, 1
-    SAVE    t1, 2
-    SAVE    t2, 3
-    SAVE    t3, 4
-    SAVE    t4, 5
-    SAVE    t5, 6
-    SAVE    t6, 7
-    SAVE    a0, 8
-    SAVE    a1, 9
-    SAVE    a2, 10
-    SAVE    a3, 11
-    SAVE    a4, 12
-    SAVE    a5, 13
-    SAVE    a6, 14
-    SAVE    a7, 15
+    # 在内核栈开辟 Context 的空间
+    addi    sp, sp, -36*REGBYTES
+
+    # 保存通用寄存器，除了 x0（固定为 0）
+    SAVE    x1, 1
+    # 将本来的栈地址 sp（即 x2）保存
+    csrr    x1, sscratch
+    SAVE    x1, 2
+    SAVE    x3, 3
+    SAVE    x4, 4
+    SAVE    x5, 5
+    SAVE    x6, 6
+    SAVE    x7, 7
+    SAVE    x8, 8
+    SAVE    x9, 9
+    SAVE    x10, 10
+    SAVE    x11, 11
+    SAVE    x12, 12
+    SAVE    x13, 13
+    SAVE    x14, 14
+    SAVE    x15, 15
+    SAVE    x16, 16
+    SAVE    x17, 17
+    SAVE    x18, 18
+    SAVE    x19, 19
+    SAVE    x20, 20
+    SAVE    x21, 21
+    SAVE    x22, 22
+    SAVE    x23, 23
+    SAVE    x24, 24
+    SAVE    x25, 25
+    SAVE    x26, 26
+    SAVE    x27, 27
+    SAVE    x28, 28
+    SAVE    x29, 29
+    SAVE    x30, 30
+    SAVE    x31, 31
 
     # 取出 CSR 并保存
-    csrr    s1, sstatus
-    csrr    s2, sepc
-    SAVE    s1, 17
-    SAVE    s2, 18
-
-    /* todo: float point register ft0-11, fa0-7 */
-
-    # Context, scause 和 stval 作为参数传入
+    csrr    t0, sstatus
+    csrr    t1, sepc
+    SAVE    t0, 32
+    SAVE    t1, 33
+    # 调用 handle_interrupt，传入参数
+    # context: &mut Context
     mv      a0, sp
+    # scause: Scause
     csrr    a1, scause
+    # stval: usize
     csrr    a2, stval
-    jal     _start_trap_rust
+    jal _start_trap_rust
 
     .globl __restore
-# 离开中断
-# 从 Context 中恢复所有寄存器，并跳转至 Context 中 sepc 的位置
+    # 离开中断
+    # 此时内核栈顶被推入了一个 Context，而 a0 指向它
+    # 接下来从 Context 中恢复所有寄存器，并将 Context 出栈（用 sscratch 记录内核栈地址）
+    # 最后跳转至恢复的 sepc 的位置
 __restore:
-    /* 多线程环境下恢复上下文 */
+    # 从 a0 中读取 sp
+    # 思考：a0 是在哪里被赋值的？（有两种情况）
     mv      sp, a0
-
     # 恢复 CSR
-    LOAD    t0, 17
-    LOAD    t1, 18
-    # 不恢复 scause 和 stval
+    LOAD    t0, 32
+    LOAD    t1, 33
     csrw    sstatus, t0
     csrw    sepc, t1
-
-    # 根据即将恢复的线程属于用户还是内核，恢复 sscratch
-    # 检查 sstatus 上的 SPP 标记
-    andi    t0, t0, 1 << 8
-    bnez    t0, _trap_load_to_kernel
-_trap_load_to_user:
-    # 将要进入用户态，需要将内核栈地址写入 sscratch
-    addi    t0, sp, 19*REGBYTES
+    # 将内核栈地址写入 sscratch
+    addi    t0, sp, 36*REGBYTES
     csrw    sscratch, t0
-_trap_load_to_kernel:
-    # 如果要进入内核态，sscratch 保持为 0 不变
-    # 恢复通用寄存器
-    LOAD    ra, 0
-    LOAD    t0, 1
-    LOAD    t1, 2
-    LOAD    t2, 3
-    LOAD    t3, 4
-    LOAD    t4, 5
-    LOAD    t5, 6
-    LOAD    t6, 7
-    LOAD    a0, 8
-    LOAD    a1, 9
-    LOAD    a2, 10
-    LOAD    a3, 11
-    LOAD    a4, 12
-    LOAD    a5, 13
-    LOAD    a6, 14
-    LOAD    a7, 15
 
-    # 恢复 sp 这里最后恢复是为了上面可以正常使用 LOAD 宏
-    LOAD    sp, 16
+    # 恢复通用寄存器
+    LOAD    x1, 1
+    LOAD    x3, 3
+    LOAD    x4, 4
+    LOAD    x5, 5
+    LOAD    x6, 6
+    LOAD    x7, 7
+    LOAD    x8, 8
+    LOAD    x9, 9
+    LOAD    x10, 10
+    LOAD    x11, 11
+    LOAD    x12, 12
+    LOAD    x13, 13
+    LOAD    x14, 14
+    LOAD    x15, 15
+    LOAD    x16, 16
+    LOAD    x17, 17
+    LOAD    x18, 18
+    LOAD    x19, 19
+    LOAD    x20, 20
+    LOAD    x21, 21
+    LOAD    x22, 22
+    LOAD    x23, 23
+    LOAD    x24, 24
+    LOAD    x25, 25
+    LOAD    x26, 26
+    LOAD    x27, 27
+    LOAD    x28, 28
+    LOAD    x29, 29
+    LOAD    x30, 30
+    LOAD    x31, 31
+
+    # 恢复 sp（又名 x2）这里最后恢复是为了上面可以正常使用 LOAD 宏
+    LOAD    x2, 2
     sret
 "
 );
@@ -395,14 +417,16 @@ _trap_load_to_kernel:
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub struct TrapFrame {
+    pub zero: usize,
     pub ra: usize,
+    pub sp: usize,
+    pub gp: usize,
+    pub tp: usize,
     pub t0: usize,
     pub t1: usize,
     pub t2: usize,
-    pub t3: usize,
-    pub t4: usize,
-    pub t5: usize,
-    pub t6: usize,
+    pub s0: usize,
+    pub s1: usize,
     pub a0: usize,
     pub a1: usize,
     pub a2: usize,
@@ -411,7 +435,20 @@ pub struct TrapFrame {
     pub a5: usize,
     pub a6: usize,
     pub a7: usize,
-    pub sp: usize,
+    pub s2: usize,
+    pub s3: usize,
+    pub s4: usize,
+    pub s5: usize,
+    pub s6: usize,
+    pub s7: usize,
+    pub s8: usize,
+    pub s9: usize,
+    pub s10: usize,
+    pub s11: usize,
+    pub t3: usize,
+    pub t4: usize,
+    pub t5: usize,
+    pub t6: usize,
     pub sstatus: Sstatus,
     pub sepc: usize,
 }
