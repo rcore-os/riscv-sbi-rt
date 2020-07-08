@@ -426,7 +426,7 @@ _to_kernel:
 
 /// Saved trap frame
 #[allow(missing_docs)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct TrapFrame {
     pub zero: usize,
