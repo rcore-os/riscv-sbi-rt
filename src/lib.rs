@@ -306,9 +306,9 @@ _start_trap_sbi:
 # csrrw rd, csr, rs1：csr 的值写入 rd；同时 rs1 的值写入 csr
     csrrw   sp, sscratch, sp
     bnez    sp, _from_user
-    _from_kernel:
+_from_kernel:
     csrr    sp, sscratch
-    _from_user:
+_from_user:
     # 此时 sscratch：原先的 sp；sp：内核栈地址
     # 在内核栈开辟 Context 的空间
     addi    sp, sp, -34*8
@@ -379,11 +379,11 @@ __restore:
     # 检查 sstatus 上的 SPP 标记
     andi    t0, t0, 1 << 8
     bnez    t0, _to_kernel
-    _to_user:
+_to_user:
     # 将要进入用户态，需要将内核栈地址写入 sscratch
     addi    t0, sp, 34*8
     csrw    sscratch, t0
-    _to_kernel:
+_to_kernel:
     # 如果要进入内核态，sscratch 保持为 0 不变
 
     # 恢复通用寄存器
