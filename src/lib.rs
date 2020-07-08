@@ -305,7 +305,7 @@ _start_trap_sbi:
     # 交换 sp 和 sscratch（切换到内核栈）
     csrrw   sp, sscratch, sp
     # 在内核栈开辟 Context 的空间
-    addi    sp, sp, -36*REGBYTES
+    addi    sp, sp, -34*REGBYTES
 
     # 保存通用寄存器，除了 x0（固定为 0）
     SAVE    x1, 1
@@ -371,7 +371,7 @@ __restore:
     csrw    sstatus, t0
     csrw    sepc, t1
     # 将内核栈地址写入 sscratch
-    addi    t0, sp, 36*REGBYTES
+    addi    t0, sp, 34*REGBYTES
     csrw    sscratch, t0
 
     # 恢复通用寄存器
