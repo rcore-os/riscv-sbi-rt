@@ -15,6 +15,10 @@ A mininal runtime / startup for Supervisor Binary Interface (SBI) on RISC-V.
 - [x] Proper support for systems without paging system
 - [x] Nice document and design pattern
 
+todo:
+
+- [ ] Optional legacy privilege spec v1.9.1 (for K210) support
+
 ## Example
 
 Dependencies:
