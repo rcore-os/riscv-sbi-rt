@@ -53,13 +53,13 @@ pub fn parse(input: TokenStream, mode: Mode) -> Result<EntryConfig> {
                 }
                 should_next_be_group = true;
             }
-            (tree @ _, true) => {
+            (tree, true) => {
                 return Err(Error::new(
                     tree.span(),
                     "expected a group `(virt_addr => phys_addr, flags)`",
                 ))
             }
-            (tree @ _, false) => return Err(Error::new(tree.span(), "expected `;`")),
+            (tree, false) => return Err(Error::new(tree.span(), "expected `;`")),
         }
     }
     Ok(entry_config)
@@ -114,30 +114,28 @@ fn parse_group(group: Group, mode: Mode) -> Result<(usize, usize)> {
                 flags = Some(parse_flags(ident)?);
                 should_be_next = State::None;
             }
-            (tree @ _, State::VaLiteral) => {
+            (tree, State::VaLiteral) => {
                 return Err(Error::new(
                     tree.span(),
                     "expected literal for virtual address",
                 ))
             }
-            (tree @ _, State::PunctEq) => return Err(Error::new(tree.span(), "expected `=>`")),
-            (tree @ _, State::PunctGt) => return Err(Error::new(tree.span(), "expected `=>`")),
-            (tree @ _, State::PaLiteral) => {
+            (tree, State::PunctEq) => return Err(Error::new(tree.span(), "expected `=>`")),
+            (tree, State::PunctGt) => return Err(Error::new(tree.span(), "expected `=>`")),
+            (tree, State::PaLiteral) => {
                 return Err(Error::new(
                     tree.span(),
                     "expected literal for physical address",
                 ))
             }
-            (tree @ _, State::PunctComma) => return Err(Error::new(tree.span(), "expected `,`")),
-            (tree @ _, State::ConfigIdent) => {
+            (tree, State::PunctComma) => return Err(Error::new(tree.span(), "expected `,`")),
+            (tree, State::ConfigIdent) => {
                 return Err(Error::new(
                     tree.span(),
                     "expected one of `r`, `rw`, `x`, `rx` or `rwx`",
                 ))
             }
-            (tree @ _, State::None) => {
-                return Err(Error::new(tree.span(), "expected end of group"))
-            }
+            (tree, State::None) => return Err(Error::new(tree.span(), "expected end of group")),
         }
     }
     if should_be_next != State::None {

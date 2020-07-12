@@ -9,14 +9,14 @@ pub fn boot_page_content(entry_config: &EntryConfig, mode: Mode) -> TokenStream 
         Mode::Sv32 => {
             let pte = (0..1024)
                 .map(|idx| entry_config[idx])
-                .map(|val| Literal::usize_unsuffixed(val));
+                .map(Literal::usize_unsuffixed);
             quote!( #( #pte , )* )
         }
         // in Sv39 and Sv48, virtual page number contain 9 bits
         Mode::Sv39 | Mode::Sv48 => {
             let pte = (0..512)
                 .map(|idx| entry_config[idx])
-                .map(|val| Literal::usize_unsuffixed(val));
+                .map(Literal::usize_unsuffixed);
             quote!( #( #pte , )* )
         }
     }
