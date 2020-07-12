@@ -10,6 +10,10 @@ use syn::{
     ReturnType, Stmt, Type, Visibility,
 };
 
+mod codegen;
+mod syntax;
+use syntax::Mode;
+
 /// Attribute to declare the entry point of the supervisor program
 ///
 /// The specified function will be called by the runtime's init function,
@@ -420,3 +424,143 @@ fn extract_cfgs(attrs: Vec<Attribute>) -> (Vec<Attribute>, Vec<Attribute>) {
 fn eq(attr: &Attribute, name: &str) -> bool {
     attr.style == AttrStyle::Outer && attr.path.is_ident(name)
 }
+
+/// Init an Sv39 boot page before entering real start address
+///
+/// ```no_run
+/// #[cfg(target_pointer_width = "64")]
+/// riscv_sbi_rt::boot_page_sv39! {
+///     (0xffffffff_80000000 => 0x00000000_80000000, rwx);
+///     (0xffffffff_00000000 => 0x00000000_00000000, rwx);
+///     (0x00000000_80000000 => 0x00000000_80000000, rwx);
+/// }
+/// ```
+#[proc_macro]
+pub fn boot_page_sv39(item: TokenStream) -> TokenStream {
+    let entry_config = match syntax::parse(item.into(), Mode::Sv39) {
+        Err(e) => return e.to_compile_error().into(),
+        Ok(x) => x,
+    };
+
+    let boot_page_content = codegen::boot_page_content(&entry_config, Mode::Sv39);
+
+    quote!(
+        #[repr(align(4096))]
+        #[repr(C)]
+        struct __BootPage([usize; 512]);
+        #[export_name = "_boot_page"]
+        static __BOOT_PAGE: __BootPage = __BootPage([ #boot_page_content ]);
+        extern { fn _abs_start() -> !; }
+        global_asm!("
+    .section .text.entry
+    .globl _start
+_start: 
+    la t1, _boot_page
+    srli t1, t1, 12
+    li t0, 8 << 60
+    or t0, t0, t1
+    csrw satp, t0
+    sfence.vma
+    
+    .option push
+    .option norelax
+1:
+    auipc ra, %pcrel_hi(1f)
+    ld ra, %pcrel_lo(1b)(ra)
+    jr ra
+    .align  3
+1:
+    .dword _abs_start
+.option pop
+        ");
+    )
+    .into()
+}
+
+#[proc_macro]
+pub fn boot_page_sv48(item: TokenStream) -> TokenStream {
+    let entry_config = match syntax::parse(item.into(), Mode::Sv48) {
+        Err(e) => return e.to_compile_error().into(),
+        Ok(x) => x,
+    };
+
+    let boot_page_content = codegen::boot_page_content(&entry_config, Mode::Sv48);
+
+    quote!(
+        #[repr(align(4096))]
+        #[repr(C)]
+        struct __BootPage([usize; 512]);
+        #[export_name = "_boot_page"]
+        static __BOOT_PAGE: __BootPage = __BootPage([ #boot_page_content ]);
+        extern { fn _abs_start() -> !; }
+        global_asm!("
+    .section .text.entry
+    .globl _start
+_start: 
+    la t1, _boot_page
+    srli t1, t1, 12
+    li t0, 9 << 60
+    or t0, t0, t1
+    csrw satp, t0
+    sfence.vma
+    
+    .option push
+    .option norelax
+1:
+    auipc ra, %pcrel_hi(1f)
+    ld ra, %pcrel_lo(1b)(ra)
+    jr ra
+    .align  3
+1:
+    .dword _abs_start
+.option pop
+        ");
+    )
+    .into()
+}
+
+// There should be sv57, sv64 here in the future
+
+#[proc_macro]
+pub fn boot_page_sv32(item: TokenStream) -> TokenStream {
+    let entry_config = match syntax::parse(item.into(), Mode::Sv32) {
+        Err(e) => return e.to_compile_error().into(),
+        Ok(x) => x,
+    };
+
+    let boot_page_content = codegen::boot_page_content(&entry_config, Mode::Sv32);
+
+    quote!(
+        #[repr(align(4096))]
+        #[repr(C)]
+        struct __BootPage([usize; 1024]);
+        #[export_name = "_boot_page"]
+        static __BOOT_PAGE: __BootPage = __BootPage([ #boot_page_content ]);
+        extern { fn _abs_start() -> !; }
+        global_asm!("
+    .section .text.entry
+    .globl _start
+_start: 
+    la t1, _boot_page
+    srli t1, t1, 12
+    li t0, 1 << 31
+    or t0, t0, t1
+    csrw satp, t0
+    sfence.vma
+    
+    .option push
+    .option norelax
+1:
+    auipc ra, %pcrel_hi(1f)
+    lw ra, %pcrel_lo(1b)(ra)
+    jr ra
+    .align  2
+1:
+    .word _abs_start
+.option pop
+        ");
+    )
+    .into()
+}
+
+// if you need boot_page_bare, you don't include any macro in this crate.

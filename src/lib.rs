@@ -7,6 +7,7 @@
 
 extern crate alloc;
 
+pub use riscv_sbi_rt_macros::{boot_page_sv32, boot_page_sv39, boot_page_sv48};
 pub use riscv_sbi_rt_macros::{entry, interrupt, pre_init};
 
 use core::alloc::Layout;
@@ -99,67 +100,12 @@ pub unsafe extern "C" fn start_rust(hartid: usize, dtb_pa: usize) -> ! {
     riscv_sbi::legacy::shutdown()
 }
 
-#[cfg(target_pointer_width = "32")]
-global_asm!(
-    r#"
+global_asm!("
     .section .text.entry
     .globl _start
+    .weak _start
 _start:
-    /* Todo: paging system for 32-bit environment */
-
-    lui ra, %hi(_abs_start)
-    jr %lo(_abs_start)(ra)
-"#
-);
-
-#[cfg(target_pointer_width = "64")]
-global_asm!(
-    r#"
-    .section .text.entry
-    .globl _start
-_start:
-    /* On system boot, we use Sv39 paging system. After boot succeeded, 
-        operating system may switch to other paging systems. */
-
-    /* load address of boot_page_table and calculate its page number */
-    la t0, boot_page_table
-    srli t0, t0, 12
-    li t1, (8 << 60)    /* Use Sv39 in satp register */
-    or t0, t0, t1
-    /* Write to satp and refresh TLB */
-    csrw satp, t0       
-    sfence.vma          
-
-    /* Jump to actual virtual start address */
-.option push
-.option norelax /* to prevent an unsupported R_RISCV_ALIGN relocation from being generated */
-1:
-    auipc ra, %pcrel_hi(1f)
-    ld ra, %pcrel_lo(1b)(ra)
-    jr ra
-    .align  3
-1:
-    .dword _abs_start
-.option pop
-
-    /* Boot page table (initial kernal mapping). Can be recycled afterwards */
-    .section .data
-    .align 12
-    .global boot_page_table
-    boot_page_table:
-    .quad 0
-    .quad 0
-    .quad (0x80000 << 10) | 0xcf /* Item 2: 0x0000000_80000000 -> 0x80000000 + VRWXAD (0xCF) */
-    .zero 505 * 8
-    .quad (0x00000 << 10) | 0xcf /* Item 508: 0xffffffff_00000000 -> 0x00000000 + VRWXAD (0xCF) */
-    .quad 0
-    .quad (0x80000 << 10) | 0xcf /* Item 510: 0xffffffff_80000000 -> 0x80000000 + VRWXAD (0xCF) */
-    .quad 0
-"#
-);
-
-global_asm!(
-    r#"
+    .globl _abs_start
 _abs_start:
     .cfi_startproc
     .cfi_undefined ra
