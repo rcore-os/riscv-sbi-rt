@@ -1,3 +1,9 @@
+//! Internal implementation details of `riscv-sbi-rt`.
+//!
+//! Do not use this crate directly.
+
+#![deny(missing_docs)]
+
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
@@ -425,7 +431,7 @@ fn eq(attr: &Attribute, name: &str) -> bool {
     attr.style == AttrStyle::Outer && attr.path.is_ident(name)
 }
 
-/// Init an Sv39 boot page before entering real start address
+/// Init an Sv39 boot page before entering real start address.
 ///
 /// ```no_run
 /// #[cfg(target_pointer_width = "64")]
@@ -477,6 +483,7 @@ _start:
     .into()
 }
 
+/// Init an Sv48 boot page before entering real start address.
 #[proc_macro]
 pub fn boot_page_sv48(item: TokenStream) -> TokenStream {
     let entry_config = match syntax::parse(item.into(), Mode::Sv48) {
@@ -521,6 +528,16 @@ _start:
 
 // There should be sv57, sv64 here in the future
 
+/// Init an Sv32 boot page before entering real start address.
+///
+/// ```no_run
+/// #[cfg(target_pointer_width = "32")]
+/// riscv_sbi_rt::boot_page_sv32! {
+///     // On Sv32, physical address can be up to 34 bits
+///     (0x80400000 => 0x3fffff000, rwx);
+///     (0x00400000 => 0x00000000, rwx);
+/// }
+/// ```
 #[proc_macro]
 pub fn boot_page_sv32(item: TokenStream) -> TokenStream {
     let entry_config = match syntax::parse(item.into(), Mode::Sv32) {
