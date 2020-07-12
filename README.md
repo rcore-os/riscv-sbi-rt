@@ -21,7 +21,7 @@ todo:
 
 ## Example
 
-Minimum operating system kernel (with no initial boot page):
+Write four lines to build a minimum operating system kernel:
 
 ```rust
 // src/main.rs
@@ -32,7 +32,16 @@ fn main(hartid: usize, dtb_pa: usize) {
 }
 ```
 
-With an Sv39 initial boot page:
+Another four lines for a trap handler:
+
+```rust
+#[interrupt]
+fn SupervisorSoft() {
+    println!("SupervisorSoft!");
+}
+```
+
+Add serveral additional lines to build with an Sv39 initial boot page:
 
 ```rust
 #[cfg(target_pointer_width = "64")]
@@ -43,20 +52,11 @@ riscv_sbi_rt::boot_page_sv39! {
 }
 ```
 
-With trap handlers:
-
-```rust
-#[interrupt]
-fn SupervisorSoft() {
-    println!("SupervisorSoft!");
-}
-```
-
 Customize memory areas in your linker script:
 
 ```rust
 MEMORY {
-    /* Virtual address mapped memory areas */
+    /* Virtual address mapped memory area */
     VIRT_DRAM : ORIGIN = 0xffffffff80000000, LENGTH = 128M
 }
 
@@ -77,3 +77,8 @@ REGION_ALIAS("REGION_BSS", VIRT_DRAM);
 REGION_ALIAS("REGION_STACK", VIRT_DRAM);
 REGION_ALIAS("REGION_FRAME", VIRT_DRAM);
 ```
+
+The addresses of memory areas are defined together with boot page macro.
+For example if there's a `DRAM` with the physical base address `0x80000000`,
+and there is a boot page mapper for `0xffffffff_80000000 => 0x00000000_80000000`,
+Then the virtual base address of `DRAM` (aka `VIRT_DRAM`) is `0xffffffff_80000000`
