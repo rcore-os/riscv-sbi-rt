@@ -21,7 +21,7 @@ todo:
 
 ## Example
 
-Minimum operating system:
+Minimum operating system kernel (with no initial boot page):
 
 ```rust
 // src/main.rs
