@@ -100,6 +100,7 @@ pub unsafe extern "C" fn start_rust(hartid: usize, dtb_pa: usize) -> ! {
     riscv_sbi::legacy::shutdown()
 }
 
+// Ref: https://github.com/rust-embedded/riscv-rt/blob/master/asm.S
 global_asm!("
     .section .text.entry
     .globl _start
@@ -209,9 +210,6 @@ fn halt() -> ! {
 
 // supervisor interrupt handler
 
-// Ref: https://os20-rcore-tutorial.github.io/rCore-Tutorial-deploy/docs/lab-1/guide/part-6.html
-// todo: should we save all registers here or part of them only?
-
 #[cfg(target_pointer_width = "64")]
 global_asm!(
     "
@@ -236,6 +234,8 @@ global_asm!(
     .endm
 "
 );
+
+// Ref: https://rcore-os.github.io/rCore-Tutorial-deploy/docs/lab-1/guide/part-4.html
 global_asm!(
     "
     .section .text

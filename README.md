@@ -81,4 +81,4 @@ REGION_ALIAS("REGION_FRAME", VIRT_DRAM);
 The addresses of memory areas are defined together with boot page macro.
 For example if there's a `DRAM` with the physical base address `0x80000000`,
 and there is a boot page mapper for `0xffffffff_80000000 => 0x00000000_80000000`,
-Then the virtual base address of `DRAM` (aka `VIRT_DRAM`) is `0xffffffff_80000000`
+then the virtual base address of `DRAM` (aka `VIRT_DRAM`) is `0xffffffff_80000000`.
