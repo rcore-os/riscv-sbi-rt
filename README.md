@@ -57,7 +57,7 @@ Customize memory areas in your linker script:
 ```rust
 MEMORY {
     /* Virtual address mapped memory area */
-    VIRT_DRAM : ORIGIN = 0xffffffff80000000, LENGTH = 128M
+    DRAM : ORIGIN = 0xffffffff80000000, LENGTH = 128M
 }
 
 /* Use virtual address is okay if you have an initial boot page */
@@ -70,15 +70,15 @@ PROVIDE(_max_hart_id = 1);
 PROVIDE(_frame_size = 16384 * 4K);
 
 /* Map the runtime regions into memory areas */
-REGION_ALIAS("REGION_TEXT", VIRT_DRAM);
-REGION_ALIAS("REGION_RODATA", VIRT_DRAM);
-REGION_ALIAS("REGION_DATA", VIRT_DRAM);
-REGION_ALIAS("REGION_BSS", VIRT_DRAM);
-REGION_ALIAS("REGION_STACK", VIRT_DRAM);
-REGION_ALIAS("REGION_FRAME", VIRT_DRAM);
+REGION_ALIAS("REGION_TEXT", DRAM);
+REGION_ALIAS("REGION_RODATA", DRAM);
+REGION_ALIAS("REGION_DATA", DRAM);
+REGION_ALIAS("REGION_BSS", DRAM);
+REGION_ALIAS("REGION_STACK", DRAM);
+REGION_ALIAS("REGION_FRAME", DRAM);
 ```
 
 The addresses of memory areas are defined together with boot page macro.
 For example if there's a `DRAM` with the physical base address `0x80000000`,
 and there is a boot page mapper for `0xffffffff_80000000 => 0x00000000_80000000`,
-then the virtual base address of `DRAM` (aka `VIRT_DRAM`) is `0xffffffff_80000000`.
+then the virtual base address of `DRAM` is `0xffffffff80000000`.
