@@ -124,7 +124,7 @@ _abs_start:
     /* Do not read mhartid, here's supervisor level, would result in exception */
     lui t0, %hi(_max_hart_id)
     add t0, t0, %lo(_max_hart_id)
-    bgtu a0, t0, _start_abort
+1:  bgtu a0, t0, 1b
     
     // mv tp, a0 /* todo: thread pointer */
 
