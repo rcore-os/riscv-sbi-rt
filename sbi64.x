@@ -74,7 +74,13 @@ SECTIONS
 
     .frame (INFO) : ALIGN(4K) {
         _sframe = .;
-        . += _frame_size;
+        . += _frame_size - (_eframe - _sframe_reserve);
+    } > REGION_FRAME
+
+    /* store initial boot pages and could be recycled after it's allocated for other uses */
+    .frame_reserve : {
+        _sframe_reserve = .; /* private symbol */
+        KEEP(*(.boot_page))
         . = ALIGN(4K);
         _eframe = .;
     } > REGION_FRAME
