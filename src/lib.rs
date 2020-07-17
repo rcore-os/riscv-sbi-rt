@@ -208,6 +208,14 @@ fn halt() -> ! {
     }
 }
 
+/// Get the maximum hart id for this runtime
+pub fn max_hart_id() -> usize {
+    extern "C" {
+        static _max_hart_id: u8;
+    }
+    unsafe { &_max_hart_id as *const _ as usize }
+}
+
 // supervisor interrupt handler
 
 #[cfg(target_pointer_width = "64")]
