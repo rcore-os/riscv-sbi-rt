@@ -13,7 +13,7 @@ pub use riscv_sbi_rt_macros::{entry, interrupt, pre_init};
 use core::alloc::Layout;
 use core::panic::PanicInfo;
 use core::sync::atomic::*;
-use riscv::register::{scause::Scause, sstatus::Sstatus, stvec};
+use riscv::register::{scause, sstatus::Sstatus, stvec};
 use riscv_sbi::println;
 
 #[export_name = "error: riscv-sbi-rt appears more than once in the dependency graph"]
@@ -324,10 +324,6 @@ _from_user:
     # 调用 handle_interrupt，传入参数
     # context: &mut Context
     mv      a0, sp
-    # scause: Scause
-    csrr    a1, scause
-    # stval: usize
-    csrr    a2, stval
     jal     _start_trap_rust
 
 .globl __restore
@@ -435,7 +431,7 @@ pub struct TrapFrame {
 #[doc(hidden)]
 #[no_mangle]
 #[allow(unused_variables, non_snake_case)]
-pub fn DefaultExceptionHandler(trap_frame: &TrapFrame, scause: Scause, stval: usize) -> ! {
+pub fn DefaultExceptionHandler(trap_frame: &TrapFrame) -> ! {
     panic!("Default exception handler!");
 }
 
@@ -456,27 +452,20 @@ pub fn DefaultInterruptHandler() {
 ///
 /// This function should only be called by trap initializer assembly code.
 #[export_name = "_start_trap_rust"]
-pub unsafe fn start_trap_rust(
-    trap_frame: *mut TrapFrame,
-    scause: Scause,
-    stval: usize,
-) -> *mut TrapFrame {
+pub unsafe fn start_trap_rust(trap_frame: *mut TrapFrame) -> *mut TrapFrame {
     extern "Rust" {
-        fn ExceptionHandler(
-            trap_frame: &mut TrapFrame,
-            scause: Scause,
-            stval: usize,
-        ) -> *mut TrapFrame;
+        fn ExceptionHandler(trap_frame: &mut TrapFrame) -> *mut TrapFrame;
     }
 
+    let scause = scause::read();
     if scause.is_exception() {
-        ExceptionHandler(&mut *trap_frame, scause, stval)
+        ExceptionHandler(&mut *trap_frame)
     } else {
         let code = scause.code();
         if code < __INTERRUPTS.len() {
             let h = &__INTERRUPTS[code];
             // if reserved, it would call DefaultHandler
-            (h.handler)(&mut *trap_frame, scause, stval)
+            (h.handler)(&mut *trap_frame)
         } else {
             DefaultHandler();
             trap_frame
@@ -501,7 +490,7 @@ pub mod trap {
 
 #[doc(hidden)]
 pub union Vector {
-    handler: unsafe fn(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame,
+    handler: unsafe fn(trap_frame: &mut TrapFrame) -> *mut TrapFrame,
     reserved: unsafe fn(),
     invalid: unsafe fn(),
 }
@@ -544,16 +533,12 @@ pub static __INTERRUPTS: [Vector; 12] = [
 ];
 
 extern "Rust" {
-    fn UserSoft(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
-    fn SupervisorSoft(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
-    fn UserTimer(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
-    fn SupervisorTimer(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
-    fn UserExternal(trap_frame: &mut TrapFrame, scause: Scause, stval: usize) -> *mut TrapFrame;
-    fn SupervisorExternal(
-        trap_frame: &mut TrapFrame,
-        scause: Scause,
-        stval: usize,
-    ) -> *mut TrapFrame;
+    fn UserSoft(trap_frame: &mut TrapFrame) -> *mut TrapFrame;
+    fn SupervisorSoft(trap_frame: &mut TrapFrame) -> *mut TrapFrame;
+    fn UserTimer(trap_frame: &mut TrapFrame) -> *mut TrapFrame;
+    fn SupervisorTimer(trap_frame: &mut TrapFrame) -> *mut TrapFrame;
+    fn UserExternal(trap_frame: &mut TrapFrame) -> *mut TrapFrame;
+    fn SupervisorExternal(trap_frame: &mut TrapFrame) -> *mut TrapFrame;
 
     fn DefaultHandler();
 }
