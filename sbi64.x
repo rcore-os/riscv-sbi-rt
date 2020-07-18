@@ -1,3 +1,5 @@
+/* Ref: riscv-rt/link.x */
+
 PROVIDE(DefaultHandler = DefaultInterruptHandler);
 PROVIDE(ExceptionHandler = DefaultExceptionHandler);
 
@@ -45,7 +47,12 @@ SECTIONS
     .rodata : ALIGN(4K) {
         _srodata = .;
         /* 要链接的文件的 .rodata 字段集中放在这里 */
+        *(.srodata .srodata.*);
         *(.rodata .rodata.*)
+        /* 4-byte align the end (VMA) of this section.
+        This is required by LLD to ensure the LMA of the following .data
+        section will have the correct alignment. */
+        . = ALIGN(4);
         _erodata = .;
     } > REGION_RODATA
 
@@ -58,6 +65,7 @@ SECTIONS
         /* 要链接的文件的 .data 字段集中放在这里 */
         *(.sdata .sdata.* .sdata2 .sdata2.*);
         *(.data .data.*)
+        . = ALIGN(4);
         _edata = .;
     } > REGION_DATA
 
@@ -66,6 +74,7 @@ SECTIONS
         _sbss = .;
         /* 要链接的文件的 .bss 字段集中放在这里 */
         *(.sbss .bss .bss.*)
+        . = ALIGN(4);
         _ebss = .;
     } > REGION_BSS
 
@@ -73,6 +82,7 @@ SECTIONS
     .heap (NOLOAD) : ALIGN(4K) {
         _sheap = .;
         . += _heap_size;
+        . = ALIGN(4);
         _eheap = .;
     } > REGION_HEAP
 
@@ -83,11 +93,8 @@ SECTIONS
         _sstack = .;
     } > REGION_STACK
 
-    /* Discard .eh_frame, we are not doing unwind on panic so it is not needed */
-    /DISCARD/ :
-    {
-        *(.eh_frame .eh_frame_hdr);
-    }
+    .eh_frame (INFO) : { KEEP(*(.eh_frame)) }
+    .eh_frame_hdr (INFO) : { *(.eh_frame_hdr) }
 }
 
 ASSERT(ORIGIN(REGION_TEXT) % 4K == 0, "
