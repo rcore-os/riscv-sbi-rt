@@ -46,7 +46,6 @@ SECTIONS
         _srodata = .;
         /* 要链接的文件的 .rodata 字段集中放在这里 */
         *(.rodata .rodata.*)
-        . = ALIGN(4K);
         _erodata = .;
     } > REGION_RODATA
 
@@ -59,7 +58,6 @@ SECTIONS
         /* 要链接的文件的 .data 字段集中放在这里 */
         *(.sdata .sdata.* .sdata2 .sdata2.*);
         *(.data .data.*)
-        . = ALIGN(4K);
         _edata = .;
     } > REGION_DATA
 
@@ -68,7 +66,6 @@ SECTIONS
         _sbss = .;
         /* 要链接的文件的 .bss 字段集中放在这里 */
         *(.sbss .bss .bss.*)
-        . = ALIGN(4K);
         _ebss = .;
     } > REGION_BSS
 
@@ -76,7 +73,6 @@ SECTIONS
     .heap (NOLOAD) : ALIGN(4K) {
         _sheap = .;
         . += _heap_size;
-        . = ALIGN(4K);
         _eheap = .;
     } > REGION_HEAP
 
@@ -84,7 +80,6 @@ SECTIONS
     .stack (INFO) : ALIGN(4K) {
         _estack = .;
         . = _stack_start;
-        . = ALIGN(4K);
         _sstack = .;
     } > REGION_STACK
 
@@ -110,20 +105,20 @@ ERROR(riscv-sbi-rt): the start of the REGION_HEAP must be 4K-byte aligned");
 ASSERT(ORIGIN(REGION_STACK) % 4K == 0, "
 ERROR(riscv-sbi-rt): the start of the REGION_STACK must be 4K-byte aligned");
 
-ASSERT(_stext % 4K == 0, "
-ERROR(riscv-sbi-rt): `_stext` must be 4K-byte aligned");
+ASSERT(_stext % 4 == 0, "
+ERROR(riscv-sbi-rt): `_stext` must be 4-byte aligned");
 
-ASSERT(_sdata % 4K == 0 && _edata % 4K == 0, "
-BUG(riscv-sbi-rt): .data is not 4K-byte aligned");
+ASSERT(_sdata % 4 == 0 && _edata % 4 == 0, "
+BUG(riscv-sbi-rt): .data is not 4-byte aligned");
 
-ASSERT(_sidata % 4K == 0, "
-BUG(riscv-sbi-rt): the LMA of .data is not 4K-byte aligned");
+ASSERT(_sidata % 4 == 0, "
+BUG(riscv-sbi-rt): the LMA of .data is not 4-byte aligned");
 
-ASSERT(_sbss % 4K == 0 && _ebss % 4K == 0, "
-BUG(riscv-sbi-rt): .bss is not 4K-byte aligned");
+ASSERT(_sbss % 4 == 0 && _ebss % 4 == 0, "
+BUG(riscv-sbi-rt): .bss is not 4-byte aligned");
 
-ASSERT(_sheap % 4K == 0, "
-BUG(riscv-sbi-rt): start of .heap is not 4K-byte aligned");
+ASSERT(_sheap % 4 == 0, "
+BUG(riscv-sbi-rt): start of .heap is not 4-byte aligned");
 
 ASSERT(_stext + SIZEOF(.text) < ORIGIN(REGION_TEXT) + LENGTH(REGION_TEXT), "
 ERROR(riscv-sbi-rt): The .text section must be placed inside the REGION_TEXT region.
