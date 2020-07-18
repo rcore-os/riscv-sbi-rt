@@ -209,11 +209,24 @@ fn halt() -> ! {
 }
 
 /// Get the maximum hart id for this runtime
+#[inline]
 pub fn max_hart_id() -> usize {
     extern "C" {
         static _max_hart_id: u8;
     }
     unsafe { &_max_hart_id as *const _ as usize }
+}
+
+/// Returns a pointer to the start of the heap
+///
+/// The returned pointer is guaranteed to be 4K-byte aligned for frames and paging.
+#[inline]
+pub fn heap_start() -> *mut usize {
+    extern "C" {
+        static mut _sheap: usize;
+    }
+
+    unsafe { &mut _sheap }
 }
 
 // supervisor interrupt handler

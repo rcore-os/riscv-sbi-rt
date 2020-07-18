@@ -17,8 +17,8 @@ PROVIDE(_max_hart_id = 0);
 /* Supervisor stack size for each hart; default to 2K per hart, can be redefined by user */
 /* Used in initializing stack for each hart in runtime */
 PROVIDE(_hart_stack_size = 2K);
-/* Provide supervisor frame size; must be times of 4K */
-PROVIDE(_frame_size = 0);
+/* Provide supervisor runtime heap size; must be times of 4K */
+PROVIDE(_heap_size = 0);
 /* Allow supervisor to redefine entry point address according to device */
 PROVIDE(_stext = ORIGIN(REGION_TEXT));
 /* Allow supervisor to redefine stack start according to device */
@@ -72,18 +72,13 @@ SECTIONS
         _ebss = .;
     } > REGION_BSS
 
-    .frame (INFO) : ALIGN(4K) {
-        _sframe = .;
-        . += _frame_size - (_eframe - _sframe_reserve);
-    } > REGION_FRAME
-
-    /* store initial boot pages and could be recycled after it's allocated for other uses */
-    .frame_reserve : {
-        _sframe_reserve = .; /* private symbol */
-        KEEP(*(.boot_page))
+    /* fictitious region that represents the memory available for the heap */
+    .heap (NOLOAD) : ALIGN(4K) {
+        _sheap = .;
+        . += _heap_size;
         . = ALIGN(4K);
-        _eframe = .;
-    } > REGION_FRAME
+        _eheap = .;
+    } > REGION_HEAP
 
     /* fictitious region that represents the memory available for the stack */
     .stack (INFO) : ALIGN(4K) {
@@ -100,35 +95,35 @@ SECTIONS
     }
 }
 
-ASSERT(ORIGIN(REGION_TEXT) % 4 == 0, "
-ERROR(riscv-sbi-rt): the start of the REGION_TEXT must be 4-byte aligned");
+ASSERT(ORIGIN(REGION_TEXT) % 4K == 0, "
+ERROR(riscv-sbi-rt): the start of the REGION_TEXT must be 4K-byte aligned");
 
-ASSERT(ORIGIN(REGION_RODATA) % 4 == 0, "
-ERROR(riscv-sbi-rt): the start of the REGION_RODATA must be 4-byte aligned");
+ASSERT(ORIGIN(REGION_RODATA) % 4K == 0, "
+ERROR(riscv-sbi-rt): the start of the REGION_RODATA must be 4K-byte aligned");
 
-ASSERT(ORIGIN(REGION_DATA) % 4 == 0, "
-ERROR(riscv-sbi-rt): the start of the REGION_DATA must be 4-byte aligned");
+ASSERT(ORIGIN(REGION_DATA) % 4K == 0, "
+ERROR(riscv-sbi-rt): the start of the REGION_DATA must be 4K-byte aligned");
 
-ASSERT(ORIGIN(REGION_STACK) % 4 == 0, "
-ERROR(riscv-sbi-rt): the start of the REGION_STACK must be 4-byte aligned");
+ASSERT(ORIGIN(REGION_HEAP) % 4K == 0, "
+ERROR(riscv-sbi-rt): the start of the REGION_HEAP must be 4K-byte aligned");
 
-ASSERT(_stext % 4 == 0, "
-ERROR(riscv-sbi-rt): `_stext` must be 4-byte aligned");
+ASSERT(ORIGIN(REGION_STACK) % 4K == 0, "
+ERROR(riscv-sbi-rt): the start of the REGION_STACK must be 4K-byte aligned");
 
-ASSERT(_sdata % 4 == 0 && _edata % 4 == 0, "
-BUG(riscv-sbi-rt): .data is not 4-byte aligned");
+ASSERT(_stext % 4K == 0, "
+ERROR(riscv-sbi-rt): `_stext` must be 4K-byte aligned");
 
-ASSERT(_sidata % 4 == 0, "
-BUG(riscv-sbi-rt): the LMA of .data is not 4-byte aligned");
+ASSERT(_sdata % 4K == 0 && _edata % 4K == 0, "
+BUG(riscv-sbi-rt): .data is not 4K-byte aligned");
 
-ASSERT(_sbss % 4 == 0 && _ebss % 4 == 0, "
-BUG(riscv-sbi-rt): .bss is not 4-byte aligned");
+ASSERT(_sidata % 4K == 0, "
+BUG(riscv-sbi-rt): the LMA of .data is not 4K-byte aligned");
 
-ASSERT(_sframe % 4K == 0 && _eframe % 4K == 0, "
-BUG(riscv-sbi-rt): .frame is not 4K-byte aligned");
+ASSERT(_sbss % 4K == 0 && _ebss % 4K == 0, "
+BUG(riscv-sbi-rt): .bss is not 4K-byte aligned");
 
-ASSERT(_frame_size % 4K == 0, "
-ERROR(riscv-sbi-rt): `_frame_size` must be times of 4Kbytes");
+ASSERT(_sheap % 4K == 0, "
+BUG(riscv-sbi-rt): start of .heap is not 4K-byte aligned");
 
 ASSERT(_stext + SIZEOF(.text) < ORIGIN(REGION_TEXT) + LENGTH(REGION_TEXT), "
 ERROR(riscv-sbi-rt): The .text section must be placed inside the REGION_TEXT region.

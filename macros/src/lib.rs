@@ -455,7 +455,6 @@ pub fn boot_page_sv39(item: TokenStream) -> TokenStream {
         #[repr(C)]
         struct __BootPage([usize; 512]);
         #[export_name = "_boot_page"]
-        #[link_section = ".boot_page"]
         static __BOOT_PAGE: __BootPage = __BootPage([ #boot_page_content ]);
         extern { fn _abs_start() -> !; }
         global_asm!("
@@ -499,7 +498,6 @@ pub fn boot_page_sv48(item: TokenStream) -> TokenStream {
         #[repr(C)]
         struct __BootPage([usize; 512]);
         #[export_name = "_boot_page"]
-        #[link_section = ".boot_page"]
         static __BOOT_PAGE: __BootPage = __BootPage([ #boot_page_content ]);
         extern { fn _abs_start() -> !; }
         global_asm!("
@@ -554,7 +552,6 @@ pub fn boot_page_sv32(item: TokenStream) -> TokenStream {
         #[repr(C)]
         struct __BootPage([usize; 1024]);
         #[export_name = "_boot_page"]
-        #[link_section = ".boot_page"]
         static __BOOT_PAGE: __BootPage = __BootPage([ #boot_page_content ]);
         extern { fn _abs_start() -> !; }
         global_asm!("
