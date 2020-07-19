@@ -16,9 +16,7 @@ use core::sync::atomic::*;
 use riscv::register::{scause, sstatus::Sstatus, stvec};
 use riscv_sbi::println;
 
-#[export_name = "error: riscv-sbi-rt appears more than once in the dependency graph"]
-#[doc(hidden)]
-pub static __ONCE__: () = ();
+// __ONCE__ is replaced in Cargo.toml file
 
 #[cfg(target_pointer_width = "32")]
 extern "Rust" {
