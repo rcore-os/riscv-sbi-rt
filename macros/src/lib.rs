@@ -458,7 +458,7 @@ pub fn boot_page_sv39(item: TokenStream) -> TokenStream {
         static __BOOT_PAGE: __BootPage = __BootPage([ #boot_page_content ]);
         extern { fn _abs_start() -> !; }
         global_asm!("
-    .section .text.entry
+    .section .init
     .globl _start
 _start: 
     la t1, _boot_page
@@ -501,7 +501,7 @@ pub fn boot_page_sv48(item: TokenStream) -> TokenStream {
         static __BOOT_PAGE: __BootPage = __BootPage([ #boot_page_content ]);
         extern { fn _abs_start() -> !; }
         global_asm!("
-    .section .text.entry
+    .section .init
     .globl _start
 _start: 
     la t1, _boot_page
@@ -555,7 +555,7 @@ pub fn boot_page_sv32(item: TokenStream) -> TokenStream {
         static __BOOT_PAGE: __BootPage = __BootPage([ #boot_page_content ]);
         extern { fn _abs_start() -> !; }
         global_asm!("
-    .section .text.entry
+    .section .init
     .globl _start
 _start: 
     la t1, _boot_page

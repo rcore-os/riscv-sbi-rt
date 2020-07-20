@@ -100,7 +100,7 @@ pub unsafe extern "C" fn start_rust(hartid: usize, dtb_pa: usize) -> ! {
 
 // Ref: https://github.com/rust-embedded/riscv-rt/blob/master/asm.S
 global_asm!("
-    .section .text.entry
+    .section .init
     .globl _start
     .weak _start
 _start:
@@ -115,51 +115,30 @@ _abs_start:
     /* Setup global pointer */
     .option push
     .option norelax
-    la gp, __global_pointer$
+    la  gp, __global_pointer$
     .option pop
 
-    /* Check hart id limit */
-    /* Do not read mhartid, here's supervisor level, would result in exception */
-    lui t0, %hi(_max_hart_id)
-    add t0, t0, %lo(_max_hart_id)
-1:  bgtu a0, t0, 1b
-    
-    // mv tp, a0 /* todo: thread pointer */
-
-    /* Prepare hart for each stack */
-    /* Load symbols */
-    la sp, _stack_start
-    lui t0, %hi(_hart_stack_size)
-    add t0, t0, %lo(_hart_stack_size)
-
-    /* Calculate stack address */
-    .ifdef __riscv_mul 
-    mul t0, a0, t0
-    .else
-    beqz a0, 2f  /* jump if single-hart (a0 equals zero) */
-    mv t1, a0
-    mv t2, t0
+    beqz    a0, 1f
+    /* Other harts are halted, waiting for software interrupt */
+    wfi
+    j       2f
 1:
-    add t0, t0, t2
-    addi t1, t1, -1
-    bnez t1, 1b
+    /* Prepare stack for hart 0; */
+    /* stack for other harts are prepared in init code in hart 0 */
+    /* Load symbols */
+    la  sp, _sstack
 2:
-    .endif
-
-    /* Load stack address for this hart */
-    sub sp, sp, t0
-
     /* If entry function returns, it should abort */
-    la ra, _start_abort
-    
+    la  ra, _start_abort
+
     /* Jump to rust entry function */
-    j _start_rust
+    j   _start_rust
 
     .cfi_endproc
 
 _start_abort:
     wfi
-    j _start_abort
+    j   _start_abort
 "#
 );
 

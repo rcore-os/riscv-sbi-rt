@@ -13,18 +13,12 @@ PROVIDE(SupervisorExternal = DefaultHandler);
 PROVIDE(__pre_init = default_pre_init);
 PROVIDE(_mp_hook = default_mp_hook);
 
-/* Maximum hart id, can be defined by user */
-/* Used to calculate stack size limit in runtime */
-PROVIDE(_max_hart_id = 0);
-/* Supervisor stack size for each hart; default to 2K per hart, can be redefined by user */
-/* Used in initializing stack for each hart in runtime */
-PROVIDE(_hart_stack_size = 2K);
 /* Provide supervisor runtime heap size; must be times of 4K */
 PROVIDE(_heap_size = 0);
+/* Provide supervisor shared stack size; must be times of 4K */
+PROVIDE(_stack_size = 0);
 /* Allow supervisor to redefine entry point address according to device */
 PROVIDE(_stext = ORIGIN(REGION_TEXT));
-/* Allow supervisor to redefine stack start according to device */
-PROVIDE(_stack_start = ORIGIN(REGION_STACK) + LENGTH(REGION_STACK));
 
 /* 目标架构 */
 OUTPUT_ARCH(riscv)
@@ -36,8 +30,9 @@ SECTIONS
 {
     /* .text 字段 */
     .text _stext : {
-        /* 把 entry 函数放在最前面 */
-        *(.text.entry)
+        /* Place init sections first */
+        KEEP(*(.init));
+        KEEP(*(.init.rust));
         /* 要链接的文件的 .text 字段集中放在这里 */
         *(.text .text.*)
         _etext = .;
@@ -68,6 +63,7 @@ SECTIONS
         . = ALIGN(4);
         _edata = .;
     } > REGION_DATA
+    
 
     /* .bss 字段 */
     .bss (NOLOAD) : ALIGN(4K) {
@@ -87,9 +83,11 @@ SECTIONS
     } > REGION_HEAP
 
     /* fictitious region that represents the memory available for the stack */
+    /* this is allocated only for the boot hart 0 */
     .stack (INFO) : ALIGN(4K) {
         _estack = .;
-        . = _stack_start;
+        . += _stack_size;
+        . = ALIGN(4);
         _sstack = .;
     } > REGION_STACK
 
@@ -131,6 +129,3 @@ ASSERT(_stext + SIZEOF(.text) < ORIGIN(REGION_TEXT) + LENGTH(REGION_TEXT), "
 ERROR(riscv-sbi-rt): The .text section must be placed inside the REGION_TEXT region.
 Set _stext to an address smaller than 'ORIGIN(REGION_TEXT) + LENGTH(REGION_TEXT)'");
 
-ASSERT(SIZEOF(.stack) > (_max_hart_id + 1) * _hart_stack_size, "
-ERROR(riscv-rt): .stack section is too small for allocating stacks for all the harts.
-Consider changing `_max_hart_id` or `_hart_stack_size`.");
