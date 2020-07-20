@@ -16,7 +16,7 @@ PROVIDE(_mp_hook = default_mp_hook);
 /* Provide supervisor runtime heap size; must be times of 4K */
 PROVIDE(_heap_size = 0);
 /* Provide supervisor shared stack size; must be times of 4K */
-PROVIDE(_stack_size = 0);
+PROVIDE(_stack_size = 128K);
 /* Allow supervisor to redefine entry point address according to device */
 PROVIDE(_stext = ORIGIN(REGION_TEXT));
 
