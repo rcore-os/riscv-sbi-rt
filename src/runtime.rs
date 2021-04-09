@@ -35,11 +35,7 @@ global_asm!(
     .section .text.entry
     .globl _start
 _start:
-    mv tp, a0
-
-    la sp, bootstack
-    sll t0, a0, 14
-    add sp, sp, t0
+    la sp, bootstacktop
 
     call init
 
@@ -47,7 +43,7 @@ _start:
     .align 12
     .global bootstack
 bootstack:
-    .space 4096 * 4 * 4
+    .space 4096 * 16
     .global bootstacktop
 bootstacktop:
 "#
