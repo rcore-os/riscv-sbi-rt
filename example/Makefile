@@ -2,7 +2,6 @@ arch ?= riscv64
 target := $(arch)imac-unknown-none-elf
 mode := debug
 kernel := target/$(target)/$(mode)/opensbi-rt-example
-bin := target/$(target)/$(mode)/kernel.bin
 
 sysroot := $(shell rustc --print sysroot)
 objdump := $(shell find $(sysroot) -name llvm-objdump) --arch-name=$(arch)
@@ -10,12 +9,6 @@ objcopy := $(shell find $(sysroot) -name llvm-objcopy)
 
 ifeq ($(mode), release)
 	BUILD_ARGS += --release
-endif
-
-ifeq ($(arch), riscv32)
-	START_ADDR := 0x80400000
-else ifeq ($(arch), riscv64)
-	START_ADDR := 0x80200000
 endif
 
 .PHONY: kernel build clean qemu run env
@@ -27,10 +20,7 @@ env:
 	rustup target add $(target)
 
 kernel:
-	cargo build $(BUILD_ARGS)
-
-$(bin): kernel
-	$(objcopy) $(kernel) --strip-all -O binary $@
+	cargo build $(BUILD_ARGS) --target $(target)
 
 asm:
 	$(objdump) -d $(kernel) | less
@@ -44,11 +34,11 @@ header:
 clean:
 	cargo clean
 
-qemu: $(bin)
+qemu: kernel
 	qemu-system-$(arch) \
 		-machine virt \
 		-nographic \
 		-bios default \
-		-device loader,file=$(bin),addr=$(START_ADDR)
+		-kernel $(kernel)
 
 run: build qemu

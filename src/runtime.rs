@@ -1,4 +1,5 @@
 use core::alloc::Layout;
+use core::hint::spin_loop;
 use core::panic::PanicInfo;
 use core::sync::atomic::*;
 use linked_list_allocator::LockedHeap;
@@ -16,7 +17,7 @@ pub extern "C" fn init(hartid: usize, dtb: usize) {
         READY.store(true, Ordering::Release);
     } else {
         while !READY.load(Ordering::Acquire) {
-            spin_loop_hint();
+            spin_loop();
         }
     }
     unsafe {
