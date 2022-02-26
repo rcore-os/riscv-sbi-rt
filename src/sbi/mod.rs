@@ -45,16 +45,22 @@ impl From<SBIReturn> for SBIResult<usize> {
 
 #[inline(always)]
 fn sbi_call(ext_id: usize, func_id: usize, arg0: usize, arg1: usize, arg2: usize) -> SBIReturn {
-    let error;
+    let error: isize;
     let value;
     unsafe {
-        llvm_asm!(
-            "ecall"
-            : "={x10}" (error), "={x11}"(value)
-            : "{x10}" (arg0), "{x11}" (arg1), "{x12}" (arg2), "{x16}"(func_id), "{x17}" (ext_id)
-            : "memory"
-            : "volatile"
+        core::arch::asm!(
+            "ecall",
+            in("a0") arg0,
+            in("a1") arg1,
+            in("a2") arg2,
+            in("a6") func_id,
+            in("a7") ext_id,
+            lateout("a0") error,
+            lateout("a1") value,
         );
+        SBIReturn {
+            error: core::mem::transmute(error),
+            value,
+        }
     }
-    SBIReturn { error, value }
 }

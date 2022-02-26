@@ -1,4 +1,5 @@
 use core::alloc::Layout;
+use core::arch::{asm, global_asm};
 use core::hint::spin_loop;
 use core::panic::PanicInfo;
 use core::sync::atomic::*;
@@ -75,7 +76,7 @@ fn oom(layout: Layout) -> ! {
 fn halt() -> ! {
     loop {
         unsafe {
-            llvm_asm!("wfi");
+            asm!("wfi");
         }
     }
 }
