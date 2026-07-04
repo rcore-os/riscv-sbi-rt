@@ -3,6 +3,7 @@
 #![no_std]
 #![feature(alloc_error_handler)]
 #![deny(warnings, missing_docs)]
+#![allow(static_mut_refs)]
 
 extern crate alloc;
 

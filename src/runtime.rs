@@ -13,7 +13,7 @@ pub extern "C" fn init(hartid: usize, dtb: usize) {
         unsafe {
             HEAP_ALLOCATOR
                 .lock()
-                .init(HEAP.as_ptr() as usize, HEAP_SIZE);
+                .init(HEAP.as_ptr() as *mut u8, HEAP_SIZE);
         }
         READY.store(true, Ordering::Release);
     } else {
