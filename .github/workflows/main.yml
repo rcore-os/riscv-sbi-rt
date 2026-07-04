@@ -36,3 +36,24 @@ jobs:
         run: cargo build --all-features --target ${{ matrix.target }}
       - name: Build docs
         run: cargo doc --target ${{ matrix.target }}
+
+  qemu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          targets: riscv64imac-unknown-none-elf
+      - run: sudo apt-get update && sudo apt-get install -y qemu-system-riscv
+      - name: Build example
+        run: cargo build --target riscv64imac-unknown-none-elf
+        working-directory: example
+      - name: Run in QEMU
+        run: timeout 30 qemu-system-riscv64 -machine virt -nographic -bios default -kernel target/riscv64imac-unknown-none-elf/debug/opensbi-rt-example 2>&1 | tee qemu.log
+        working-directory: example
+      - name: Check output
+        run: |
+          grep -q "Hello, OpenSBI!" qemu.log
+          grep -q "hartid=0, dtb=" qemu.log
+          grep -q "spec_version = SpecVersion" qemu.log
