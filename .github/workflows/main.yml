@@ -57,3 +57,4 @@ jobs:
           grep -q "Hello, OpenSBI!" qemu.log
           grep -q "hartid=0, dtb=" qemu.log
           grep -q "spec_version = SpecVersion" qemu.log
+        working-directory: example
