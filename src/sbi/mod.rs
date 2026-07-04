@@ -59,7 +59,7 @@ fn sbi_call(ext_id: usize, func_id: usize, arg0: usize, arg1: usize, arg2: usize
             lateout("a1") value,
         );
         SBIReturn {
-            error: core::mem::transmute(error),
+            error: core::mem::transmute::<isize, SBIError>(error),
             value,
         }
     }
