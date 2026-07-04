@@ -45,7 +45,7 @@ jobs:
         with:
           toolchain: nightly
           targets: riscv64imac-unknown-none-elf
-      - run: sudo apt-get update && sudo apt-get install -y qemu-system-riscv
+      - run: sudo apt-get update && sudo apt-get install -y qemu-system-misc
       - name: Build example
         run: cargo build --target riscv64imac-unknown-none-elf
         working-directory: example
